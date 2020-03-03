@@ -1,0 +1,11 @@
+{
+	"responsible": "Oleg Gurov",
+	"description": "get long queries",
+	"type": "read_only",
+	"hook": {
+		"type": "matterhook",
+		"username": "db_converter",
+		"channel": "dbc-dba",
+		"message": "Current long queries:"
+	}
+}

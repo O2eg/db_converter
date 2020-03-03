@@ -1,0 +1,10 @@
+{
+	"type": "read_only",
+	"hook": {
+		"type": "matterhook",
+		"username": "db_converter",
+		"channel": "dbc-alert",
+		"message": ":warning: @here Found tables with disabled autovacuum! Use `ALTER TABLE tbl SET (autovacuum_enabled = true);`",
+		"verbosity": "raise"
+	}
+}

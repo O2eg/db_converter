@@ -1,0 +1,12 @@
+{
+	"responsible": "Oleg Gurov",
+	"client_min_messages": "INFO",
+	"type": "maintenance",
+	"hook": {
+		"type": "matterhook",
+		"username": "db_converter",
+		"verbosity": ["stm_result"],
+		"channel": "dbc-test",
+		"message": ":warning: @here Packet `test_insert_delete_select`:"
+	}
+}

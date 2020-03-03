@@ -1,0 +1,11 @@
+{
+	"responsible": "Oleg Gurov",
+	"description": "get replication lag",
+	"type": "read_only",
+	"hook": {
+		"type": "matterhook",
+		"username": "db_converter",
+		"channel": "dbc-dba",
+		"message": "Current replication lag in bytes:"
+	}
+}

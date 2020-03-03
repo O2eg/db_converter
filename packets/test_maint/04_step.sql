@@ -1,0 +1,1 @@
+drop index if exists public.dbc_packets_dt_test_idx;

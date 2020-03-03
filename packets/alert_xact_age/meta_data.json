@@ -1,0 +1,13 @@
+{
+	"responsible": "Oleg Gurov",
+	"description": "Check xact age of relations and databases",
+	"type": "read_only",
+	"client_min_messages": "INFO",
+	"hook": {
+		"type": "matterhook",
+		"username": "db_converter",
+		"verbosity": ["resultset"],
+		"channel": "dbc-alert",
+		"message": ":warning: @here Found problems with frozenxid:"
+	}
+}

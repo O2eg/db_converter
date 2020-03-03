@@ -1,0 +1,14 @@
+{
+	"type": "read_only",
+	"client_min_messages": "NOTICE",
+	"hook": {
+		"type": "matterhook",
+		"username": "db_converter",
+		"verbosity": ["raise"],
+		"channel": "dbc-alert",
+		"message": ":warning: @here Found tables with low int4 capacity:"
+	},
+	"postgresql": {
+		"statement_timeout": "180s"
+	}
+}

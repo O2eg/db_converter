@@ -1,0 +1,10 @@
+{
+	"responsible": "no name",
+	"type": "read_only",
+	"hook": {
+		"type": "matterhook",
+		"username": "db_converter",
+		"channel": "dbc-test",
+		"message": "Message from test packet :construction: @here"
+	}
+}
