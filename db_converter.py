@@ -1587,7 +1587,10 @@ if __name__ == "__main__":
 
     # helper for iterate all threads
     def iterate_threads():
-        threads = next(iter([th for _, th in DBCL_ALL.items()])).worker_threads
+        try:
+            threads = next(iter([th for _, th in DBCL_ALL.items()])).worker_threads
+        except StopIteration:
+            return
         common_list_of_threads = []
         for _, threads_per_db in threads.items():
             common_list_of_threads.extend(threads_per_db)
