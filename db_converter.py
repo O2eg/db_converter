@@ -973,6 +973,7 @@ class DBCLocal:
             "Info"
         )
         do_work = True
+        db_conn = None
         while do_work:
             do_work = False
             try:
@@ -1048,13 +1049,19 @@ class DBCLocal:
                     "Error"
                 )
                 time.sleep(DBC.sys_conf.conn_exception_sleep_interval)
-            except Exception:
+            except (
+                postgresql.exceptions.AuthenticationSpecificationError,
+                postgresql.exceptions.ClientCannotConnectError,
+                TimeoutError
+            ) as e:
                 DBC.logger.log(
                     'Exception in %s: \n%s' % (thread_name, exception_helper(DBC.sys_conf.detailed_traceback)),
-                    "Error"
+                    "Error",
+                    do_print=True
                 )
             finally:
-                db_conn.close()
+                if db_conn is not None:
+                    db_conn.close()
                 DBC.logger.log('Thread %s finished!' % thread_name, "Info")
 
     def parse_packet(self, packet_name, thread_name):
@@ -1278,8 +1285,8 @@ class DBCLocal:
             except:
                 do_work = False
                 exception_descr = exception_helper(DBC.sys_conf.detailed_traceback)
-                msg = 'Exception in \'%s\' %d on processing packet \'%s\' step \'%s\': \n%s' % \
-                      (thread_name, current_pid, packet_name, step[0], exception_descr)
+                msg = 'Exception in \'%s\' %s on processing packet \'%s\': \n%s' % \
+                      (thread_name, str(current_pid), packet_name, exception_descr)
                 DBC.logger.log(msg, "Error", do_print=True)
 
         self.lock.acquire()
@@ -1449,6 +1456,14 @@ class DBCLocal:
                 DBC.logger.log(
                     'Exception in \'%s\': %s. Reconnecting after %d sec...' %
                     (thread_name, str(e), DBC.sys_conf.conn_exception_sleep_interval),
+                    "Error"
+                )
+            except (
+                postgresql.exceptions.AuthenticationSpecificationError,
+                postgresql.exceptions.ClientCannotConnectError
+            ) as e:
+                DBC.logger.log(
+                    'Exception in %s: \n%s' % (thread_name, exception_helper(DBC.sys_conf.detailed_traceback)),
                     "Error"
                 )
             except:
@@ -1668,9 +1683,20 @@ if __name__ == "__main__":
         if len(dbs) == 0:
             DBC.logger.log('No target databases!', "Error", do_print=True)
         for db_name in dbs:
-            run_on_db(db_name, DBC.sys_conf.dbs_dict[db_name])
-            if DBC.args.seq:
-                wait_threads()
+            try:
+                run_on_db(db_name, DBC.sys_conf.dbs_dict[db_name])
+                if DBC.args.seq:
+                    wait_threads()
+            except (
+                    postgresql.exceptions.AuthenticationSpecificationError,
+                    postgresql.exceptions.ClientCannotConnectError,
+                    TimeoutError
+            ) as e:
+                DBC.logger.log(
+                    'Cannot connect to %s: \n%s' % (db_name, exception_helper(DBC.sys_conf.detailed_traceback)),
+                    "Error",
+                    do_print=True
+                )
 
     if not break_deployment:
         wait_threads()
