@@ -15,7 +15,7 @@ import sqlparse
 from actiontracker import ActionTracker
 import shutil
 
-VERSION = 2.4.1
+VERSION = 2.5
 
 
 class BasicEnum:

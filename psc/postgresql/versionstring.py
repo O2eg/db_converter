@@ -25,7 +25,7 @@ def split(vstr : str) -> (
 			state_level = None
 		else:
 			state_level = int(state_level)
-		vlist = [int(x or '0') for x in v[:-1]]
+		vlist = [int(x or '0') for x in v[:-1] if x.isdigit()]
 		if last_version:
 			vlist.append(int(last_version))
 		vlist += [None] * (3 - len(vlist))
