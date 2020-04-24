@@ -52,3 +52,7 @@ Tasks that can be solved using `db_converter`:
 **Generator** - sql file associated with some `step` by index number. If there is a `generator`, `step` contains placeholders for substituting the values ​​returned by the `generator` (for more details see the "Generators and Placeholders" section).
 
 **Conversion** (migration, deployment) - transformation of the database structure according to the specified package of changes.
+
+![common flow](doc/dbc_common_flow.png)
+
+When executing the `Packet`, sql files are applied to the specified database sequentially in accordance with the index.
