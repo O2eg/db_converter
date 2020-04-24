@@ -21,3 +21,34 @@ python3.8 get-pip.py
 pip3.8 install sqlparse
 pip3.8 install requests
 ```
+
+
+# Introduction
+
+The basic goal of creating `db_converter` is to simplify the database conversion (migration) process as much as possible, while maintaining flexibility and functionality.
+
+Tasks that can be solved using `db_converter`:
+
+* Transactional modification of data of any volume
+* Database structure changing
+* DB versioning
+* System and application notifications via `mattermost` (or any other messenger)
+* Database maintenance (deleting old data, creating triggers on partitions, etc.)
+* Parallel processing of several databases
+
+## Terminology
+
+**Packet** - a package of changes (a directory with sql files) that apply to the specified database. Packet contains `meta_data.json` (an optional file with meta information describing the package) and several sql files in `XX_step.sql` format.
+
+
+**Step** - sql file, the contents of which are executed in one transaction, and containing the following types of commands:
+
+* DDL (Data Definition Language) - CREATE, DROP, ALTER, TRUNCATE, COMMENT, RENAME
+* DML (Data Manipulation Language) - SELECT, INSERT, UPDATE, DELETE
+* DCL (Data Control Language) - GRAND, REVOKE
+
+**Action** - a transaction formed on the basis of `step`. If `step` does not have a `generator`, then it creates one `action`. If `step` has a `generator`, then several transactions are generated.
+
+**Generator** - sql file associated with some `step` by index number. If there is a `generator`, `step` contains placeholders for substituting the values ​​returned by the `generator` (for more details see the "Generators and Placeholders" section).
+
+**Conversion** (migration, deployment) - transformation of the database structure according to the specified package of changes.
