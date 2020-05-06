@@ -1,11 +1,9 @@
 from psc.pgstatcommon.pg_stat_common import *
-import psc.postgresql as postgresql
 
 
 class ActionTracker:
     @staticmethod
-    def init_tbls(str_conn):
-        db_conn = postgresql.open(str_conn)
+    def init_tbls(db_conn):
         db_conn.execute("""
         DO $$
             begin
@@ -13,7 +11,7 @@ class ActionTracker:
                  SELECT count(1)
                  FROM   pg_class c
                  JOIN   pg_namespace n ON n.oid = c.relnamespace
-                 WHERE  c.relname in ('dbc_packets', 'dbc_steps', 'dbc_actions')
+                 WHERE  c.relname in ('dbc_packets', 'dbc_steps', 'dbc_actions', 'dbc_locks')
                     AND c.relkind = 'r'
                     AND n.nspname = 'public'
             ) != 3
@@ -21,6 +19,7 @@ class ActionTracker:
                 DROP TABLE IF EXISTS public.dbc_packets CASCADE;
                 DROP TABLE IF EXISTS public.dbc_steps CASCADE;
                 DROP TABLE IF EXISTS public.dbc_actions CASCADE;
+                DROP TABLE IF EXISTS public.dbc_locks CASCADE;
     
                 CREATE TABLE public.dbc_packets
                 (
@@ -69,6 +68,18 @@ class ActionTracker:
                 WITH (
                   OIDS=FALSE
                 );
+                
+                CREATE TABLE public.dbc_locks
+                (
+                    id serial,
+                    name character varying(128) not null,
+                    locked boolean not null default true,
+                    dt timestamp with time zone default now(),
+                    CONSTRAINT dbc_locks_pkey PRIMARY KEY (id)
+                )
+                WITH (
+                  OIDS=FALSE
+                );
     
                 CREATE INDEX dbc_actions_dt_idx
                     ON public.dbc_actions USING btree (dt);
@@ -78,10 +89,11 @@ class ActionTracker:
                     ON public.dbc_packets USING GIN (meta_data);
                 CREATE UNIQUE INDEX dbc_packets_name_idx
                     ON public.dbc_packets USING btree (name);
+                CREATE UNIQUE INDEX dbc_locks_name_idx
+                    ON public.dbc_locks USING btree (name);
             END IF;
             end$$;
         """)
-        db_conn.close()
 
     @staticmethod
     def is_action_exists(db_conn, packet, step, step_hash):
@@ -98,6 +110,53 @@ class ActionTracker:
                       AND a.step_hash = '%s'
                 )
             """ % (packet, step, step_hash)
+        )
+
+    @staticmethod
+    def is_packet_locked(db_conn, packet):
+        return get_scalar(
+            db_conn,
+            """
+                SELECT EXISTS(
+                    SELECT 1
+                    FROM public.dbc_locks p
+                    WHERE p.name = '%s' and locked = true
+                )
+            """ % packet
+        )
+
+    @staticmethod
+    def set_packet_lock(db_conn, packet):
+        db_conn.execute(
+            """
+            DO $$
+            declare
+                packet_name text = '%s';
+            begin
+                IF EXISTS(
+                    SELECT 1
+                    FROM public.dbc_locks p
+                    WHERE p.name = packet_name
+                ) THEN
+                    UPDATE public.dbc_locks
+                        SET locked = true
+                        WHERE name = packet_name;
+                ELSE
+                    INSERT INTO public.dbc_locks(name, locked)
+                       VALUES (packet_name, true);
+                END IF;
+            end$$;
+            """ % packet
+        )
+
+    @staticmethod
+    def set_packet_unlock(db_conn, packet):
+        db_conn.execute(
+            """
+                UPDATE public.dbc_locks
+                    SET locked = false
+                    WHERE name = '%s';
+            """ % packet
         )
 
     @staticmethod
@@ -226,8 +285,8 @@ class ActionTracker:
         return is_data_exists
 
     @staticmethod
-    def set_step_status(db_local, packet_name, step, result):
-        db_local.execute("""
+    def set_step_status(db_conn, packet_name, step, result):
+        db_conn.execute("""
             UPDATE dbc_steps
             SET status = '%s', exception_descr = null
             WHERE id = (
@@ -239,9 +298,9 @@ class ActionTracker:
         )
 
     @staticmethod
-    def set_step_exception_status(db_local, packet_name, step, exception_descr):
-        ActionTracker.insert_step(db_local, packet_name, step)
-        pquery = db_local.prepare("""
+    def set_step_exception_status(db_conn, packet_name, step, exception_descr):
+        ActionTracker.insert_step(db_conn, packet_name, step)
+        pquery = db_conn.prepare("""
             UPDATE dbc_steps
             SET status = 'exception', exception_descr = $1
             WHERE id = (
@@ -250,11 +309,11 @@ class ActionTracker:
                 WHERE p.name = $2 AND s.name = $3
             )"""
         )
-        with db_local.xact(): pquery(exception_descr, packet_name, step)
+        with db_conn.xact(): pquery(exception_descr, packet_name, step)
 
     @staticmethod
-    def set_packet_status(db_local, packet_name, result):
-        db_local.execute("""
+    def set_packet_status(db_conn, packet_name, result):
+        db_conn.execute("""
                 UPDATE dbc_packets
                 SET status = '%s'
                 WHERE name = '%s'
@@ -262,9 +321,9 @@ class ActionTracker:
         )
 
     @staticmethod
-    def get_packet_status(db_local, packet_name):
+    def get_packet_status(db_conn, packet_name):
         res_status = {}
-        for rec in get_resultset(db_local, """
+        for rec in get_resultset(db_conn, """
                 SELECT p.status, s.exception_descr, s.dt, p.packet_hash
                 FROM dbc_packets p
                 JOIN dbc_steps s on p.id = s.packet_id

@@ -2,9 +2,9 @@ from threading import Thread
 import threading
 import logging
 import logging.handlers
-import os
 import time
 from psc import PSC_DEBUG
+from psc.pgstatcommon.pg_stat_common import *
 
 
 class PSCLogger(Thread):
@@ -17,9 +17,9 @@ class PSCLogger(Thread):
     __instance = None
 
     @staticmethod
-    def instance():
+    def instance(app_name="PSCLogger", log_level=logging.DEBUG, max_bytes=1024*1000*10, backup_count=50, delay=3):
         if PSCLogger.__instance is None:
-            PSCLogger("PSCLogger")
+            PSCLogger(app_name, log_level, max_bytes, backup_count, delay).start()
         return PSCLogger.__instance
 
     def __init__(self, app_name, log_level=logging.DEBUG, max_bytes=1024*1000*10, backup_count=50, delay=3):
@@ -41,18 +41,23 @@ class PSCLogger(Thread):
 
     def run(self):
         def flush_data():
-            self.lock_logger.acquire()
-            for v in self.log_queue:
-                if v[0] == 'Error':
-                    self.logger.error(str(v[1]))
-                if v[0] == 'Warning':
-                    self.logger.warning(str(v[1]))
-                if v[0] == 'Info':
-                    self.logger.info(str(v[1]))
-                if v[0] == 'Debug':
-                    self.logger.debug(str(v[1]))
-            del self.log_queue[:]
-            self.lock_logger.release()
+            try:
+                self.lock_logger.acquire()
+                for v in self.log_queue:
+                    if v[0] == 'Error':
+                        self.logger.error(str(v[1]))
+                    if v[0] == 'Warning':
+                        self.logger.warning(str(v[1]))
+                    if v[0] == 'Info':
+                        self.logger.info(str(v[1]))
+                    if v[0] == 'Debug':
+                        self.logger.debug(str(v[1]))
+                del self.log_queue[:]
+                self.lock_logger.release()
+            except:
+                print('Error in PSCLogger flush_data: \n%s' % exception_helper(self.DBC.sys_conf.detailed_traceback))
+                self.lock_logger.release()
+                self.stop()
 
         live_iteration = 0
         while not self.do_stop:

@@ -1,0 +1,11 @@
+{
+	"responsible": "no name",
+	"description": "test exception packet",
+	"type": "default",
+	"hook": {
+		"type": "matterhook",
+		"username": "db_converter",
+		"channel": "dbc-test",
+		"message": "Message from test packet :construction:"
+	}
+}
