@@ -26,7 +26,8 @@ class TestPackets(unittest.TestCase):
             f for f in os.listdir(packets_dir)
             if f.startswith('test_') and os.path.isdir(os.path.join(packets_dir, f)) and f not in [
                 'test_sleep_sigint',
-                'test_skip_step_errors'
+                'test_skip_step_cancel',
+                'test_skip_action_cancel'
             ]
         ]:
             args = dict(
@@ -255,29 +256,24 @@ class TestDBCConnErr(unittest.TestCase):
         self.assertTrue(res.result_code[self.db_name] == ResultCode.SUCCESS)
 
 
-class TestDBCSkipStepErrors(unittest.TestCase):
+class TestDBCSkipStepCancel(unittest.TestCase):
     conf_file = 'db_converter_test.conf'
-    packet_name = 'test_skip_step_errors'
+    packet_name = 'test_skip_step_cancel'
     db_name = 'test_dbc'
 
-    def test_skip_step_errors(self):
+    def test_skip_step_cancel(self):
         parser = DBCParams.get_arg_parser()
-        # args = parser.parse_args(['--packet-name=' + self.packet_name, '--db-name=' + self.db_name])
-        #
-        # dbc = MainRoutine(args, self.conf_file)
-        # db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
-        # ActionTracker.set_packet_unlock(db_conn, self.packet_name)
-        # db_conn.close()
-        #
-        # res = MainRoutine(args, self.conf_file).run()
-        #
-        # self.assertTrue(res.packet_status[self.db_name] == PacketStatus.EXCEPTION)
-        # self.assertTrue(res.result_code[self.db_name] == ResultCode.FAIL)
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--wipe'
+        ]), self.conf_file).run()
 
         args = parser.parse_args([
             '--packet-name=' + self.packet_name,
             '--db-name=' + self.db_name,
-            '--skip-step-errors'
+            '--skip-step-cancel'
         ])
 
         dbc = MainRoutine(args, self.conf_file)
@@ -287,18 +283,62 @@ class TestDBCSkipStepErrors(unittest.TestCase):
 
         main = MainRoutine(args, self.conf_file)
 
-        # @threaded
-        # def emulate_conn_error():
-        #     time.sleep(3)
-        #     th_db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
-        #     main.terminate_conns(
-        #         th_db_conn, self.db_name, main.sys_conf.application_name, self.packet_name
-        #     )
-        #     th_db_conn.close()
-        #
-        # main.append_thread(self.db_name + '_ext', emulate_conn_error())
+        @threaded
+        def emulate_conn_error():
+            time.sleep(3)
+            th_db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+            main.terminate_conns(
+                th_db_conn, self.db_name, main.sys_conf.application_name, self.packet_name, terminate=False
+            )
+            th_db_conn.close()
 
-        res_2 = MainRoutine(args, self.conf_file).run()
+        main.append_thread(self.db_name + '_ext', emulate_conn_error())
+
+        res_2 = main.run()
+
+        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
+        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
+
+
+class TestDBCSkipActionCancel(unittest.TestCase):
+    conf_file = 'db_converter_test.conf'
+    packet_name = 'test_skip_action_cancel'
+    db_name = 'test_dbc'
+
+    def test_skip_action_cancel(self):
+        parser = DBCParams.get_arg_parser()
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--wipe'
+        ]), self.conf_file).run()
+
+        args = parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--skip-action-cancel'
+        ])
+
+        dbc = MainRoutine(args, self.conf_file)
+        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+        ActionTracker.set_packet_unlock(db_conn, self.packet_name)
+        db_conn.close()
+
+        main = MainRoutine(args, self.conf_file)
+
+        @threaded
+        def emulate_conn_error():
+            time.sleep(5)
+            th_db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+            main.terminate_conns(
+                th_db_conn, self.db_name, main.sys_conf.application_name, self.packet_name, terminate=False
+            )
+            th_db_conn.close()
+
+        main.append_thread(self.db_name + '_ext', emulate_conn_error())
+
+        res_2 = main.run()
 
         self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
         self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
