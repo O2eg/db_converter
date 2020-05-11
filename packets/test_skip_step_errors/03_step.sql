@@ -1,5 +1,5 @@
 ------------------
 -- tx start
-select pg_sleep(5);
+select 3;
 -- tx end
 ------------------

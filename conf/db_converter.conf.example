@@ -10,12 +10,11 @@ execute_sql = True             # Set "False" to prevent SQL executing in databas
 conn_exception_sleep_interval = 5
 cancel_wait_tx_timeout = '3 minutes'
 cancel_blocker_tx_timeout = '60 seconds'
-# lock_file_dir = /tmp		# Set specific directory for "*.lock" files
 detailed_traceback = False
 db_name_all_confirmation = True
 
 [log]
-log_level = Info                # Debug, Info, Error
+log_level = Debug                # Debug, Info, Error
 log_sql = 1
 file_maxmbytes = 50
 file_backupcount = 5

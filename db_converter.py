@@ -9,9 +9,9 @@ import logging
 from matterhook import Webhook
 import json
 from actiontracker import ActionTracker
+from dbccore import *
 import shutil
 from enum import Enum
-from dbccore import *
 
 VERSION = 2.6
 
@@ -70,14 +70,6 @@ class SysConf:
         self.maintenance_work_mem = get_key('postgresql', 'maintenance_work_mem', '1GB')
         self.timezone = get_key('postgresql', 'timezone', 'UTC')
 
-        try:
-            self.lock_file_dir = read_conf_param_value(self.config['main']['lock_file_dir'])
-            if not os.path.isdir(self.lock_file_dir):
-                print("Invalid lock_file_dir = %s" % self.lock_file_dir)
-                sys.exit(0)
-        except KeyError:
-            self.lock_file_dir = None
-
         self.matterhook_conf = {}
         try:
             self.matterhook_conf["url"] = read_conf_param_value(self.config['matterhook']['url'])
@@ -96,88 +88,96 @@ class DBCParams:
     sys_conf = None
     logger = None
     args = None
-    db_conns = {}
     is_terminate = False
     matterhooks = None
     errors_count = 0
 
+    @staticmethod
+    def get_arg_parser():
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--packet-name",
+            help="Select specific packet name in 'packets' directory",
+            type=str
+        )
+        parser.add_argument(
+            "--db-name",
+            help="Select DB name from [databases] section of 'conf/db_converter.conf'",
+            type=str,
+            default="ALL"
+        )
+        parser.add_argument(
+            "--status",
+            help="Show packet status",
+            action='store_true',
+            default=False
+        )
+        parser.add_argument(
+            "--force",
+            help="Ignore the difference between packet hashes",
+            action='store_true',
+            default=False
+        )
+        parser.add_argument(
+            "--skip-step-errors",
+            help="Skip whole step on first error like Deadlock, QueryCanceledError",
+            action='store_true',
+            default=False
+        )
+        parser.add_argument(
+            "--skip-action-errors",
+            help="Skip action errors like Deadlock, QueryCanceledError",
+            action='store_true',
+            default=False
+        )
+        parser.add_argument(
+            "--seq",
+            help="Sequential execution in order listed in 'db_converter.conf'",
+            action='store_true',
+            default=False
+        )
+        parser.add_argument(
+            "--wipe",
+            help="Delete information about '--packet-name' from action tracker (dbc_* tables)",
+            action='store_true',
+            default=False
+        )
+        parser.add_argument(
+            "--stop",
+            help="Execute pg_terminate_backend for all db_converter connections with specific packet name",
+            action='store_true',
+            default=False
+        )
+        parser.add_argument(
+            "--unlock",
+            help="Unlock the specified packet",
+            action='store_true',
+            default=False
+        )
+        parser.add_argument(
+            "--version",
+            help="Show the version number and exit",
+            action='store_true',
+            default=False
+        )
+        parser.add_argument(
+            "--list",
+            help="List all databases according --db-name mask",
+            action='store_true',
+            default=False
+        )
+        parser.add_argument(
+            "--template",
+            help="Copy *.sql files from 'packets/templates/template' to 'packets/packet-name'",
+            type=str
+        )
+        return parser
+
     def __init__(self, args, conf):
         try:
             if args is None:
-                parser = argparse.ArgumentParser()
-                parser.add_argument(
-                    "--packet-name",
-                    help="Select specific packet name in 'packets' directory",
-                    type=str
-                )
-                parser.add_argument(
-                    "--db-name",
-                    help="Select DB name from [databases] section of 'conf/db_converter.conf'",
-                    type=str,
-                    default="ALL"
-                )
-                parser.add_argument(
-                    "--status",
-                    help="Show packet status",
-                    action='store_true',
-                    default=False
-                )
-                parser.add_argument(
-                    "--force",
-                    help="Ignore the difference between packet hashes",
-                    action='store_true',
-                    default=False
-                )
-                parser.add_argument(
-                    "--skip-step-errors",
-                    help="Skip whole step on first error like Deadlock, QueryCanceledError",
-                    action='store_true',
-                    default=False
-                )
-                parser.add_argument(
-                    "--skip-action-errors",
-                    help="Skip action errors like Deadlock, QueryCanceledError",
-                    action='store_true',
-                    default=False
-                )
-                parser.add_argument(
-                    "--seq",
-                    help="Sequential execution in order listed in 'db_converter.conf'",
-                    action='store_true',
-                    default=False
-                )
-                parser.add_argument(
-                    "--wipe",
-                    help="Delete information about '--packet-name' from action tracker (dbc_* tables)",
-                    action='store_true',
-                    default=False
-                )
-                parser.add_argument(
-                    "--stop",
-                    help="Execute pg_terminate_backend for all db_converter connections with specific packet name",
-                    action='store_true',
-                    default=False
-                )
-                parser.add_argument(
-                    "--version",
-                    help="Show the version number and exit",
-                    action='store_true',
-                    default=False
-                )
-                parser.add_argument(
-                    "--list",
-                    help="List all databases according --db-name mask",
-                    action='store_true',
-                    default=False
-                )
-                parser.add_argument(
-                    "--template",
-                    help="Copy *.sql files from 'packets/templates/template' to 'packets/packet-name'",
-                    type=str
-                )
-
                 try:
-                    self.args = parser.parse_args()
+                    self.args = self.get_arg_parser().parse_args()
                 except SystemExit:
                     sys.exit(0)
                 except:
@@ -187,12 +187,12 @@ class DBCParams:
                 if not len(sys.argv) > 1:
                     print("No arguments. Type -h for help.")
                     sys.exit(0)
-
-                if self.args.version:
-                    print("Version %s" % VERSION)
-                    sys.exit(0)
             else:
                 self.args = args
+
+            if hasattr(self.args, 'version') and self.args.version:
+                print("Version %s" % VERSION)
+                sys.exit(0)
 
             self.sys_conf = SysConf(conf)
 
@@ -268,6 +268,7 @@ class CommandType(BasicEnum, Enum):
     RUN = 'run'
     STOP = 'stop'
     STATUS = 'status'
+    UNLOCK = 'unlock'
 
 
 class PacketStatus(BasicEnum, Enum):
@@ -275,6 +276,7 @@ class PacketStatus(BasicEnum, Enum):
     STARTED = 'started'
     EXCEPTION = 'exception'
     NEW = 'new'         # if record not exists in "dbc_packets" table
+    UNKNOWN = 'unknown'
 
 
 class ResultCode:
@@ -282,6 +284,7 @@ class ResultCode:
     FAIL = 'fail'
     LOCKED = 'locked'
     NOTHING_TODO = 'nothing_todo'
+    TERMINATE = 'terminate'
 
 
 class DBCResult:
@@ -291,14 +294,22 @@ class DBCResult:
     packet_status = None
 
 
-class MainRoutine(DBCParams):
+class MainRoutine(DBCParams, DBCCore):
+    external_interrupt = False
     command_type = None         # CommandType
     packet_type = None          # PacketType
     result_code = {}            # {db_name: ResultCode}
     packet_status = {}          # {db_name: PacketStatus}
+    db_packet_status = {}       #
 
-    DBCL_ALL = {}   # each object contains two threads: lock_observer and worker_db
-    dbs = []        #
+    # db_packet_status = {
+    #     status: 'done | started | exception',
+    #     exception_descr: 'text',
+    #     exception_dt: 'datetime',
+    #     hash: 'text'
+    # }
+
+    dbs = []        # lists of databases for processing
 
     def terminate_conns(self, db_conn, db_name, app_name, packet):
         found_conns = False
@@ -326,13 +337,13 @@ class MainRoutine(DBCParams):
         # initialize command_type
         if self.args.list:
             self.command_type = CommandType.LIST
-        if self.args.wipe:
+        elif self.args.wipe:
             self.command_type = CommandType.WIPE
-        if self.args.stop:
+        elif self.args.stop:
             self.command_type = CommandType.STOP
-        if self.args.status:
+        elif self.args.status:
             self.command_type = CommandType.STATUS
-        if self.args.list is None and self.args.wipe is None and self.args.stop is None and self.args.status is None:
+        else:
             self.command_type = CommandType.RUN
 
     def init_packet_type(self):
@@ -351,18 +362,25 @@ class MainRoutine(DBCParams):
             try:
                 meta_data_json = json.loads(file_content)
                 if "type" in meta_data_json:
-                    self.packet_type = meta_data_json["type"]
+                    if meta_data_json["type"] == 'default':
+                        self.packet_type = PacketType.DEFAULT
+                    if meta_data_json["type"] == 'read_only':
+                        self.packet_type = PacketType.READ_ONLY
+                    if meta_data_json["type"] == 'no_commit':
+                        self.packet_type = PacketType.NO_COMMIT
+                    if meta_data_json["type"] == 'maintenance':
+                        self.packet_type = PacketType.MAINTENANCE
                 else:
-                    self.packet_type = PacketType.DEFAULT.value
+                    self.packet_type = PacketType.DEFAULT
             except json.decoder.JSONDecodeError:
                 raise Exception('WrongMetadata')
         else:
-            self.packet_type = PacketType.DEFAULT.value
+            self.packet_type = PacketType.DEFAULT
 
     def init_dbs_list(self):
         # processing of "db_name" parameter
         if self.args.db_name == 'ALL':  # all databases
-            for db_name, str_conn in self.DBC.sys_conf.dbs_dict.items():
+            for db_name, str_conn in self.sys_conf.dbs_dict.items():
                 if db_name not in self.dbs:
                     self.dbs.append(db_name)
         elif self.args.db_name.find('ALL,exclude:') == 0:
@@ -399,12 +417,8 @@ class MainRoutine(DBCParams):
 
     # helper for iterate all threads
     def iterate_threads(self):
-        try:
-            threads = next(iter([th for _, th in self.DBCL_ALL.items()])).worker_threads
-        except StopIteration:
-            return
         common_list_of_threads = []
-        for _, threads_per_db in threads.items():
+        for db, threads_per_db in self.worker_threads.items():
             common_list_of_threads.extend(threads_per_db)
         for thread_i in common_list_of_threads:
             yield thread_i
@@ -417,21 +431,46 @@ class MainRoutine(DBCParams):
             with SignalHandler() as handler:
                 alive_count = len([thread for thread in self.iterate_threads() if thread.is_alive()])
                 if alive_count == 0: break
-                time.sleep(0.5) # time.sleep(0.5)
+                time.sleep(0.1)
                 if live_iteration % (20 * 3) == 0:
-                    self.logger.log('Live %s threads' % alive_count, "Info")
+                    self.logger.log('Live %s threads: %s' % (
+                        alive_count,
+                        str([thread for thread in self.iterate_threads() if thread.is_alive()])
+                    ), "Debug", do_print=True)
                 live_iteration += 1
-                if handler.interrupted:
+                if handler.interrupted or self.external_interrupt:
+                    self.logger.log('Received termination signal! Call interrupt_all_conns...', "Debug", do_print=True)
                     self.is_terminate = True
-                    self.logger.log('Received termination signal!', "Info", do_print=True)
-                    for _, conn in self.db_conns.items():
-                        conn.interrupt()
-                    self.logger.log('Stopping with AppFileLock...', "Info", do_print=True)
-                    handler.unlock()
+                    self.interrupt_all_conns()
+
+    def fill_status(self, db_name, db_conn):
+        self.db_packet_status = ActionTracker.get_packet_status(db_conn, self.args.packet_name)
+        if "status" in self.db_packet_status:
+            if "exception_descr" in self.db_packet_status and self.db_packet_status["exception_descr"] is not None:
+                self.packet_status[db_name] = PacketStatus.EXCEPTION
+            elif "status" in self.db_packet_status and self.db_packet_status["status"] is not None:
+                if self.db_packet_status["status"] == 'done':
+                    self.packet_status[db_name] = PacketStatus.DONE
+                if self.db_packet_status["status"] == 'started':
+                    self.packet_status[db_name] = PacketStatus.STARTED
+        else:
+            self.packet_status[db_name] = PacketStatus.NEW
+
+    def cleanup(self):
+        self.result_code.clear()
+        self.packet_status.clear()
+        self.db_packet_status.clear()
+        self.workers_result.clear()
+        self.workers_db_pid.clear()
+        self.worker_threads.clear()
+        self.workers_status.clear()
+        self.db_conns.clear()
+        del self.dbs[:]
+        self.command_type = None
+        self.packet_type = None
 
     # processing specific DB
     def run_on_db(self, db_name, str_conn):
-        p_status = []
         db_conn = postgresql.open(str_conn)
         # ================================================================================================
         # Call init_tbls for specific args
@@ -440,8 +479,10 @@ class MainRoutine(DBCParams):
                 self.command_type == CommandType.STATUS:
             ActionTracker.init_tbls(db_conn)
         # ================================================================================================
-        if self.packet_type == PacketType.DEFAULT.value:
-            p_status = ActionTracker.get_packet_status(db_conn, self.args.packet_name)
+        if self.packet_type == PacketType.DEFAULT or self.args.status:
+            self.fill_status(db_name, db_conn)
+        if self.packet_type in (PacketType.READ_ONLY, PacketType.MAINTENANCE, PacketType.NO_COMMIT):
+            self.packet_status[db_name] = PacketStatus.NEW
         # ================================================================================================
         if self.args.stop:
             term_conn_res = self.terminate_conns(
@@ -468,28 +509,16 @@ class MainRoutine(DBCParams):
                     "new" if "status" not in self.packet_status else self.packet_status["status"]
                 )
             )
-            if "status" in self.packet_status:
-                if "exception_descr" in p_status and p_status["exception_descr"] is not None:
-                    self.packet_status[db_name] = PacketStatus.EXCEPTION
-                if "status" in p_status and p_status["status"] is not None:
-                    if p_status["status"] == 'done':
-                        self.packet_status[db_name] = PacketStatus.DONE
-                    if p_status["status"] == 'started':
-                        self.packet_status[db_name] = PacketStatus.STARTED
-                self.result_code[db_name] = ResultCode.SUCCESS
-            else:
-                self.packet_status[db_name] = PacketStatus.NEW
-                self.result_code[db_name] = ResultCode.SUCCESS
+            self.result_code[db_name] = ResultCode.SUCCESS
 
-            if "exception_descr" in p_status and p_status["exception_descr"] is not None:
-                print("       Action date time: %s" % str(p_status["exception_dt"]))
+            if "exception_descr" in  self.db_packet_status and  self.db_packet_status["exception_descr"] is not None:
+                print("       Action date time: %s" % str( self.db_packet_status["exception_dt"]))
                 print("=".join(['=' * 100]))
-                print(p_status["exception_descr"])
+                print(self.db_packet_status["exception_descr"])
                 print("=".join(['=' * 100]))
         # ================================================================================================
         if self.command_type == CommandType.RUN:
-            if "status" not in p_status or \
-                    ("status" in p_status and p_status["status"] != 'done'):
+            if self.packet_status[db_name] != PacketStatus.DONE:
                 # ===========================================
                 if ActionTracker.is_packet_locked(db_conn, self.args.packet_name):
                     self.logger.log(
@@ -500,31 +529,32 @@ class MainRoutine(DBCParams):
                     self.result_code[db_name] = ResultCode.LOCKED
                     self.packet_status[db_name] = PacketStatus.STARTED
                 else:
-                    DBCC = DBCCore(db_name, self)
                     ActionTracker.set_packet_lock(db_conn, self.args.packet_name)
                     self.logger.log(
                         '=====> Hold lock for packet %s in DB %s' % (self.args.packet_name, db_name),
                         "Info",
                         do_print=True
                     )
-                    DBCC.append_thread(
-                        DBCC.lock_observer("lock_observer_%s" % str(db_name), str_conn, self.args.packet_name)
+                    self.append_thread(
+                        db_name,
+                        self.lock_observer("lock_observer_%s" % str(db_name), str_conn, db_name, self.args.packet_name)
                     )
 
-                    if self.packet_type == PacketType.READ_ONLY.value:
-                        DBCC.append_thread(
-                            DBCC.ro_worker_db_func(
+                    if self.packet_type == PacketType.READ_ONLY:
+                        self.append_thread(
+                            db_name,
+                            self.ro_worker_db_func(
                                 "ro_manager_db_%s" % str(db_name), str_conn, db_name, self.args.packet_name
                             )
                         )
                     else:
-                        DBCC.append_thread(
-                            DBCC.worker_db_func(
+                        self.append_thread(
+                            db_name,
+                            self.worker_db_func(
                                 "manager_db_%s" % str(db_name), str_conn, db_name, self.args.packet_name
                             )
                         )
 
-                    self.DBCL_ALL[db_name] = DBCC
                     self.logger.log(
                         '--------> Packet \'%s\' started for \'%s\' database!' % \
                         (self.args.packet_name, db_name),
@@ -532,7 +562,7 @@ class MainRoutine(DBCParams):
                         do_print=True
                     )
                 # ===========================================
-            if "status" in p_status and p_status == 'done':
+            if self.packet_status[db_name] == PacketStatus.DONE:
                 self.logger.log(
                     '<-------- Packet \'%s\' already deployed to \'%s\' database!' % \
                     (self.args.packet_name, db_name),
@@ -540,6 +570,13 @@ class MainRoutine(DBCParams):
                     do_print=True
                 )
                 self.packet_status[db_name] = PacketStatus.DONE
+                self.result_code[db_name] = ResultCode.NOTHING_TODO
+
+        if self.args.unlock:
+            if ActionTracker.is_packet_locked(db_conn, self.args.packet_name):
+                ActionTracker.set_packet_unlock(db_conn, self.args.packet_name)
+                self.result_code[db_name] = ResultCode.SUCCESS
+            else:
                 self.result_code[db_name] = ResultCode.NOTHING_TODO
 
         db_conn.close()
@@ -572,6 +609,9 @@ class MainRoutine(DBCParams):
         if not break_deployment:
             if len(self.dbs) == 0:
                 self.logger.log('No target databases!', "Error", do_print=True)
+                for db in self.args.db_name.split(','):
+                    self.packet_status[db] = PacketStatus.UNKNOWN
+                    self.result_code[db] = ResultCode.NOTHING_TODO
             for db_name in self.dbs:
                 try:
                     self.run_on_db(db_name, self.sys_conf.dbs_dict[db_name])
@@ -591,20 +631,20 @@ class MainRoutine(DBCParams):
         if not break_deployment:
             self.wait_threads()     # wait all threads
 
-        for _, v in self.DBCL_ALL.items():
-            for db, result in v.workers_result.items():
+        for db, result in self.workers_result.items():
+            if db in self.sys_conf.dbs_dict:
                 db_conn = postgresql.open(self.sys_conf.dbs_dict[db])
-                ActionTracker.set_packet_unlock(
-                    db_conn,
-                    self.args.packet_name
-                )
+                ActionTracker.set_packet_unlock(db_conn, self.args.packet_name)
                 db_conn.close()
-                if result:
+                if result == WorkerResult.SUCCESS:
                     self.result_code[db] = ResultCode.SUCCESS
                     self.packet_status[db_name] = PacketStatus.DONE
-                else:
+                if result == WorkerResult.FAIL:
                     self.result_code[db] = ResultCode.FAIL
                     self.packet_status[db_name] = PacketStatus.EXCEPTION
+                if result == WorkerResult.TERMINATE:
+                    self.result_code[db] = ResultCode.TERMINATE
+                    self.packet_status[db_name] = PacketStatus.STARTED
 
         self.logger.log('<===== DBC %s finished' % VERSION, "Info", do_print=True)
         PSCLogger.instance().stop()
@@ -612,9 +652,10 @@ class MainRoutine(DBCParams):
         result = DBCResult()
         result.command_type = self.command_type
         result.packet_type = self.packet_type
-        result.result_code = self.result_code
-        result.packet_status = self.packet_status
+        result.result_code = self.result_code.copy()
+        result.packet_status = self.packet_status.copy()
 
+        self.cleanup()
         return result
 
 

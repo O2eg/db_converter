@@ -77,75 +77,81 @@ def threaded(fn):
 #     return wrapper
 
 
+class WorkerResult(BasicEnum, Enum):
+    SUCCESS = 'success'
+    FAIL = 'fail'
+    TERMINATE = 'terminate'
+
+
 class DBCCore:
     lock = threading.Lock()
     workers_db_pid = {}     # key is "db_name", value is array of pids
     worker_threads = {}     # key is "db_name", value is array of threads (one lock_observer and one worker_db_func)
-    db_name = None
     workers_status = {}     # key is "db_name", boolean value: True is active, False is finished
-    workers_result = {}
-    DBC = None
+    workers_result = {}     # key is "db_name", value is WorkerResult
+    db_conns = {}
 
-    def __init__(self, db_name, dbc):
-        self.db_name = db_name
-        self.DBC = dbc
-
-    def get_pids(self):
+    def get_pids(self, db_name):
         try:
-            if self.db_name in self.workers_db_pid:
-                yield next(iter(self.workers_db_pid[self.db_name]))
+            if db_name in self.workers_db_pid:
+                yield next(iter(self.workers_db_pid[db_name]))
             else:
                 return next(iter([]))
         except StopIteration:
             return
 
-    def remove_pid(self, pid):
-        workers_db_pids = [v for v in self.get_pids()]
+    def remove_pid(self, db_name, pid):
+        workers_db_pids = [v for v in self.get_pids(db_name)]
         workers_db_pids.remove(pid)
-        self.workers_db_pid[self.db_name] = workers_db_pids
+        self.workers_db_pid[db_name] = workers_db_pids
 
-    def append_pid(self, pid):
-        self.workers_db_pid.setdefault(self.db_name, []).append(pid)
+    def append_pid(self, db_name, pid):
+        self.workers_db_pid.setdefault(db_name, []).append(pid)
 
-    def append_thread(self, thread):
-        self.worker_threads.setdefault(self.db_name, []).append(thread)
+    def append_thread(self, db_name, thread):
+        self.worker_threads.setdefault(db_name, []).append(thread)
 
-    def get_threads(self):
-        return self.worker_threads[self.db_name]
+    def get_threads(self, db_name):
+        return self.worker_threads[db_name]
 
-    def get_num_observed_threads_(self):
-        return self.worker_threads[self.db_name].num_observed_threads
+    def get_num_observed_threads_(self, db_name):
+        return self.worker_threads[db_name].num_observed_threads
 
-    def get_worker_status(self):
-        if self.db_name in self.workers_status:
-            return self.workers_status[self.db_name]
+    def get_worker_status(self, db_name):
+        if db_name in self.workers_status:
+            return self.workers_status[db_name]
         else:
             return None
 
-    def set_worker_status_start(self):
-        self.workers_status[self.db_name] = True
+    def set_worker_status_start(self, db_name):
+        self.workers_status[db_name] = True
 
-    def set_worker_status_finish(self):
-        self.workers_status[self.db_name] = False
+    def set_worker_status_finish(self, db_name):
+        self.workers_status[db_name] = False
 
-    def set_worker_result(self, result):
-        self.workers_result[self.db_name] = result
+    def set_worker_result(self, db_name, result):
+        self.workers_result[db_name] = result
+
+    def interrupt_all_conns(self):
+        self.lock.acquire()
+        for pid, conn in self.db_conns.items():
+            self.logger.log("interrupt_all_conns: stop PID %d" % pid, "Debug", do_print=True)
+            conn.interrupt()
+        self.lock.release()
 
     @threaded
-    def lock_observer(self, thread_name, str_conn, app_name_postfix):
+    def lock_observer(self, thread_name, str_conn, db_name, app_name_postfix):
         def sleep_lo():
             for i in range(50):
-                if self.get_worker_status() is True or self.get_worker_status() is None:
-                    time.sleep(self.DBC.sys_conf.lock_observer_sleep_interval/50)
-                    if self.DBC.is_terminate:
+                if self.get_worker_status(db_name) is True or self.get_worker_status(db_name) is None:
+                    time.sleep(self.sys_conf.lock_observer_sleep_interval/50)
+                    if self.is_terminate:
                         break
-                if self.get_worker_status() is False:
+                if self.get_worker_status(db_name) is False:
                     break
 
-        sleep_lo()
-
-        self.DBC.logger.log(
-            'Thread \'%s\' runned! Observed pids: %s' % (thread_name, str([v for v in self.get_pids()])),
+        self.logger.log(
+            'Thread \'%s\' runned! Observed pids: %s' % (thread_name, str([v for v in self.get_pids(db_name)])),
             "Info",
             do_print=True
         )
@@ -155,12 +161,12 @@ class DBCCore:
             do_work = False
             try:
                 db_conn = postgresql.open(str_conn)
-                app_name = self.DBC.sys_conf.application_name + "_" + app_name_postfix
+                app_name = self.sys_conf.application_name + "_" + app_name_postfix
                 db_conn.execute("SET application_name = '%s'" % app_name)
 
-                while len([thread for thread in self.get_threads() if thread.is_alive()]) > 1\
-                        and self.get_worker_status() is True:
-                    for pid in self.get_pids():
+                while len([thread for thread in self.get_threads(db_name) if thread.is_alive()]) > 1 \
+                        and self.get_worker_status(db_name) is True and not self.is_terminate:
+                    for pid in self.get_pids(db_name):
                         # ===========================================================================
                         # case 1: detect backend activity
                         pid_is_locker = get_scalar(db_conn, """
@@ -176,14 +182,14 @@ class DBCCore:
                                     AND waiting.pid <> other.pid
                                     AND age(clock_timestamp(), waiting_stm.xact_start) > interval %s
                                     AND other.pid = %d
-                            )""" % (self.DBC.sys_conf.cancel_blocker_tx_timeout, pid)
+                            )""" % (self.sys_conf.cancel_blocker_tx_timeout, pid)
                         )
                         if pid_is_locker:
                             db_conn.execute("SELECT pg_cancel_backend(%d)" % pid)
                             self.lock.acquire()
-                            if pid in self.get_pids(): self.remove_pid(pid)
+                            if pid in self.get_pids(db_name): self.remove_pid(db_name, pid)
                             self.lock.release()
-                            self.DBC.logger.log('%s: stopped pid %d as blocker' % (thread_name, pid), "Info")
+                            self.logger.log('%s: stopped pid %d as blocker' % (thread_name, pid), "Info")
                         # ===========================================================================
                         # case 2: how long to wait for access to relations
                         any_heavyweight_lock_already = get_scalar(db_conn, """
@@ -197,18 +203,24 @@ class DBCCore:
                                     AND pid <> pg_backend_pid()
                                     AND age(clock_timestamp(), xact_start) > interval %s
                             )
-                        """ % (pid, self.DBC.sys_conf.cancel_wait_tx_timeout))
+                        """ % (pid, self.sys_conf.cancel_wait_tx_timeout))
                         if any_heavyweight_lock_already:
                             db_conn.execute("SELECT pg_cancel_backend(%d)" % pid)
                             self.lock.acquire()
-                            if pid in self.get_pids(): self.remove_pid(pid)
+                            if pid in self.get_pids(db_name): self.remove_pid(db_name, pid)
                             self.lock.release()
-                            self.DBC.logger.log('%s: stopped pid %d with heavyweight lock' % (thread_name, pid), "Info")
+                            self.logger.log('%s: stopped pid %d with heavyweight lock' % (thread_name, pid), "Info")
                         # ===========================================================================
-                    self.DBC.logger.log(
+                    self.logger.log(
                         '%s: iteration done. Sleep on %d seconds...' %
-                        (thread_name, self.DBC.sys_conf.lock_observer_sleep_interval),
-                        "Info"
+                        (thread_name, self.sys_conf.lock_observer_sleep_interval),
+                        "Info",
+                        do_print=True
+                    )
+                    self.logger.log(
+                        'Thread \'%s\': Observed pids: %s' % (thread_name, str([v for v in self.get_pids(db_name)])),
+                        "Info",
+                        do_print=True
                     )
                     sleep_lo()
             except (
@@ -218,29 +230,30 @@ class DBCCore:
                     postgresql.exceptions.ServerNotReadyError,
                     AttributeError  # AttributeError: 'Statement' object has no attribute '_row_constructor'
             ) as e:
-                if self.DBC.is_terminate:
+                if self.is_terminate:
+                    self.logger.log('Thread %s stopped!' % thread_name, "Error", do_print=True)
                     return
                 do_work = True
-                self.DBC.logger.log(
+                self.logger.log(
                     'Exception in \'%s\': %s. Reconnecting after %d sec...' %
-                    (thread_name, str(e), self.DBC.sys_conf.conn_exception_sleep_interval),
+                    (thread_name, str(e), self.sys_conf.conn_exception_sleep_interval),
                     "Error"
                 )
-                time.sleep(self.DBC.sys_conf.conn_exception_sleep_interval)
+                time.sleep(self.sys_conf.conn_exception_sleep_interval)
             except (
                 postgresql.exceptions.AuthenticationSpecificationError,
                 postgresql.exceptions.ClientCannotConnectError,
                 TimeoutError
             ) as e:
-                self.DBC.logger.log(
-                    'Exception in %s: \n%s' % (thread_name, exception_helper(self.DBC.sys_conf.detailed_traceback)),
+                self.logger.log(
+                    'Exception in %s: \n%s' % (thread_name, exception_helper(self.sys_conf.detailed_traceback)),
                     "Error",
                     do_print=True
                 )
             finally:
                 if db_conn is not None:
                     db_conn.close()
-                self.DBC.logger.log('Thread %s finished!' % thread_name, "Info", do_print=True)
+        self.logger.log('Thread %s finished!' % thread_name, "Info", do_print=True)
 
     def parse_packet(self, packet_name, thread_name):
         step_files = []
@@ -250,7 +263,7 @@ class DBCCore:
         try:
             packet_full_content = []
             meta_data = None
-            packet_dir = os.path.join(self.DBC.sys_conf.current_dir, 'packets', packet_name)
+            packet_dir = os.path.join(self.sys_conf.current_dir, 'packets', packet_name)
             for step in os.listdir(packet_dir):
                 current_file = open(os.path.join(packet_dir, step), 'r', encoding="utf8")
                 file_content = current_file.read()
@@ -294,9 +307,9 @@ class DBCCore:
                 packet_full_content_res += v
             packet_hash = hashlib.md5(packet_full_content_res.encode()).hexdigest()
         except:
-            self.DBC.logger.log(
+            self.logger.log(
                 'Exception in \'%s\' (parse_packet): \n%s' %
-                    (thread_name, exception_helper(self.DBC.sys_conf.detailed_traceback)),
+                    (thread_name, exception_helper(self.sys_conf.detailed_traceback)),
                 "Error",
                 do_print=True
             )
@@ -308,11 +321,11 @@ class DBCCore:
             if "postgresql" in meta_data_json:
                 if name in meta_data_json["postgresql"]:
                     return meta_data_json["postgresql"][name]
-            return getattr(self.DBC.sys_conf, name)
+            return getattr(self.sys_conf, name)
 
         is_super = get_scalar(db_local, 'select usesuper from pg_user where usename = CURRENT_USER')
         try:
-            if self.DBC.sys_conf.log_level == "Debug":
+            if self.sys_conf.log_level == "Debug":
                 db_local.execute("SET log_min_error_statement = 'INFO'")
                 db_local.execute("SET log_min_duration_statement = 0")
                 db_local.execute("SET log_lock_waits = on")
@@ -330,16 +343,15 @@ class DBCCore:
         except (
             postgresql.exceptions.InsufficientPrivilegeError
         ) as e:
-            self.DBC.logger.log(
+            self.logger.log(
                 'Exception in prepare_session: %s. Skip configuring session variables...' % str(e),
                 "Error"
             )
 
     @threaded
     def ro_worker_db_func(self, thread_name, db_conn_str, db_name, packet_name):
-        self.DBC.logger.log("Started '%s' thread for '%s' database" % (thread_name, db_name), "Info")
-        self.set_worker_status_start()
-        self.set_worker_result(True)
+        self.logger.log("Started '%s' thread for '%s' database" % (thread_name, db_name), "Info")
+        self.set_worker_status_start(db_name)
 
         step_files = []         # vector of pairs [step, sql]
         gen_obj_files = {}      # dict with generators of objects
@@ -360,40 +372,41 @@ class DBCCore:
         db_local = None
         current_pid = None
         exception_descr = None
+        th_result = False
 
         while do_work:
             do_work = False
             try:
                 # check conn to DB
                 if db_local is not None:    # connection db_local has been already established
-                    self.DBC.logger.log("%s: try 'SELECT 1'" % thread_name, "Info")
+                    self.logger.log("%s: try 'SELECT 1'" % thread_name, "Info")
                     try:
                         db_local.execute("SELECT 1")    # live?
-                        if current_pid not in self.get_pids():
-                            self.append_pid(current_pid)
+                        if current_pid not in self.get_pids(db_name):
+                            self.append_pid(db_name, current_pid)
                     except:
-                        self.DBC.logger.log("%s: Connection to DB is broken" % thread_name, "Error")
+                        self.logger.log("%s: Connection to DB is broken" % thread_name, "Error")
                         db_local = None     # needs reconnect
 
                 # ======================================================
                 # connecting to DB, session variables initialization
                 if db_local is None:
-                    if current_pid is not None and current_pid in self.get_pids():
-                        self.remove_pid(current_pid)
+                    if current_pid is not None and current_pid in self.get_pids(db_name):
+                        self.remove_pid(db_name, current_pid)
 
-                    self.DBC.logger.log("Thread '%s': connecting to '%s' database..." % (thread_name, db_name), "Info")
+                    self.logger.log("Thread '%s': connecting to '%s' database..." % (thread_name, db_name), "Info")
                     db_local = postgresql.open(db_conn_str)
                     db_local.execute(
                         "SET application_name = '%s'" %
-                        (self.DBC.sys_conf.application_name + "_" + os.path.splitext(packet_name)[0])
+                        (self.sys_conf.application_name + "_" + os.path.splitext(packet_name)[0])
                     )
 
                     self.prepare_session(db_local, meta_data_json)
 
                     current_pid = get_scalar(db_local, "SELECT pg_backend_pid()")
-                    self.DBC.db_conns[current_pid] = db_local
-                    self.append_pid(current_pid)
-                    self.DBC.logger.log(
+                    self.db_conns[current_pid] = db_local
+                    self.append_pid(db_name, current_pid)
+                    self.logger.log(
                         "Thread '%s': connected to '%s' database with pid %d" %
                         (thread_name, db_name, current_pid),
                         "Info"
@@ -405,7 +418,7 @@ class DBCCore:
                         ctx = Context(db_name, thread_name, current_pid, packet_name,
                                       packet_hash, meta_data, meta_data_json, step)
                         progress = str(round(float(num) * 100 / len(step_files), 2)) + "%"
-                        self.DBC.logger.log(
+                        self.logger.log(
                             '%s: progress %s' % (ctx.info(), progress),
                             "Info",
                             do_print=True
@@ -419,19 +432,21 @@ class DBCCore:
                         )
                         if result == 'exception' and exception_descr == 'connection':
                             # transaction cancelled or connection stopped
-                            time.sleep(self.DBC.sys_conf.conn_exception_sleep_interval)
+                            time.sleep(self.sys_conf.conn_exception_sleep_interval)
                             return None, None, True
                         if result == 'exception' and exception_descr == 'skip_step':
-                            self.DBC.logger.log(
+                            self.logger.log(
                                 'Thread \'%s\' (steps_processing): step %s skipped!' %
                                 (thread_name, step[0]),
                                 "Error",
                                 do_print=True
                             )
                         if result == 'exception' and exception_descr is not None and \
-                                exception_descr not in('connection', 'skip'):
+                                exception_descr not in('connection', 'skip_step'):
                             return result, exception_descr, False
-                    return None, None, False
+                        if result == 'terminate':
+                            return 'terminate', None, False
+                    return True, None, False
 
                 # ===========================================================================
                 # read only steps processing
@@ -443,7 +458,7 @@ class DBCCore:
                 for step, query in gen_nsp_files.items():
                     gen_nsp_data[step.replace("_gen_nsp", "_step")] = get_resultset(db_local, query)
 
-                _, exception_descr, do_work = ro_steps_processing()
+                th_result, exception_descr, do_work = ro_steps_processing()
                 # ===========================================================================
             except (
                     postgresql.exceptions.QueryCanceledError,
@@ -453,50 +468,59 @@ class DBCCore:
                     postgresql.exceptions.DeadlockError,
                     AttributeError  # AttributeError: 'Statement' object has no attribute '_row_constructor'
             ) as e:
-                if self.DBC.is_terminate:
-                    return
-                do_work = True
-                self.DBC.logger.log(
-                    'Exception in \'%s\': %s. Reconnecting after %d sec...' %
-                    (thread_name, str(e), self.DBC.sys_conf.conn_exception_sleep_interval),
-                    "Error"
-                )
+                if self.is_terminate:
+                    self.logger.log(
+                        "Terminated '%s' thread for '%s' database" % (thread_name, db_name),
+                        "Error",
+                        do_print=True
+                    )
+                    do_work = False
+                else:
+                    do_work = True
+                    self.logger.log(
+                        'Exception in \'%s\': %s. Reconnecting after %d sec...' %
+                        (thread_name, str(e), self.sys_conf.conn_exception_sleep_interval),
+                        "Error"
+                    )
             except:
                 do_work = False
-                self.set_worker_result(False)
-                exception_descr = exception_helper(self.DBC.sys_conf.detailed_traceback)
+                self.set_worker_result(db_name, WorkerResult.FAIL)
+                exception_descr = exception_helper(self.sys_conf.detailed_traceback)
                 msg = 'Exception in \'%s\' %s on processing packet \'%s\': \n%s' % \
                       (thread_name, str(current_pid), packet_name, exception_descr)
-                self.DBC.logger.log(msg, "Error", do_print=True)
+                self.logger.log(msg, "Error", do_print=True)
 
         self.lock.acquire()
-        if current_pid is not None and current_pid in self.get_pids():
-            self.remove_pid(current_pid)
+        if current_pid is not None and current_pid in self.get_pids(db_name):
+            self.remove_pid(db_name, current_pid)
         self.lock.release()
 
-        self.DBC.logger.log("Finished '%s' thread for '%s' database" % (thread_name, db_name), "Info")
-        if exception_descr is None:
-            self.DBC.logger.log(
+        self.logger.log("Finished '%s' thread for '%s' database" % (thread_name, db_name), "Info")
+        if exception_descr is None and th_result is True:
+            self.set_worker_result(db_name, WorkerResult.SUCCESS)
+            self.logger.log(
                 '<-------- Packet \'%s\' finished for \'%s\' database!' % \
-                    (self.DBC.args.packet_name, db_name),
+                    (self.args.packet_name, db_name),
                 "Info",
                 do_print=True
             )
         else:
-            self.set_worker_result(False)
-            self.DBC.logger.log(
+            if th_result == 'terminate':
+                self.set_worker_result(db_name, WorkerResult.TERMINATE)
+            else:
+                self.set_worker_result(db_name, WorkerResult.FAIL)
+            self.logger.log(
                 '<-------- Packet \'%s\' failed for \'%s\' database!' % \
-                    (self.DBC.args.packet_name, db_name),
+                    (self.args.packet_name, db_name),
                 "Error",
                 do_print=True
             )
-        self.set_worker_status_finish()
+        self.set_worker_status_finish(db_name)
 
     @threaded
     def worker_db_func(self, thread_name, db_conn_str, db_name, packet_name):
-        self.DBC.logger.log("Started '%s' thread for '%s' database" % (thread_name, db_name), "Info")
-        self.set_worker_status_start()
-        self.set_worker_result(True)
+        self.logger.log("Started '%s' thread for '%s' database" % (thread_name, db_name), "Info")
+        self.set_worker_status_start(db_name)
 
         step_files = []         # vector of pairs [step, sql]
         gen_obj_files = {}      # dict with generators of objects
@@ -517,50 +541,51 @@ class DBCCore:
         db_local = None
         current_pid = None
         exception_descr = None
+        th_result = False
 
         while do_work:
             do_work = False
             try:
                 # check conn to DB
                 if db_local is not None:    # connection db_local has been already established
-                    self.DBC.logger.log("%s: try 'SELECT 1'" % thread_name, "Info")
+                    self.logger.log("%s: try 'SELECT 1'" % thread_name, "Info")
                     try:
                         db_local.execute("SELECT 1")    # live?
-                        if current_pid not in self.get_pids():
-                            self.append_pid(current_pid)
+                        if current_pid not in self.get_pids(db_name):
+                            self.append_pid(db_name, current_pid)
                     except:
-                        self.DBC.logger.log("%s: Connection to DB is broken" % thread_name, "Error")
+                        self.logger.log("%s: Connection to DB is broken" % thread_name, "Error")
                         db_local = None     # needs reconnect
 
                 # ======================================================
                 # connecting to DB, session variables initialization
                 if db_local is None:
-                    if current_pid is not None and current_pid in self.get_pids():
-                        self.remove_pid(current_pid)
+                    if current_pid is not None and current_pid in self.get_pids(db_name):
+                        self.remove_pid(db_name, current_pid)
 
-                    self.DBC.logger.log("Thread '%s': connecting to '%s' database..." % (thread_name, db_name), "Info")
+                    self.logger.log("Thread '%s': connecting to '%s' database..." % (thread_name, db_name), "Info")
                     db_local = postgresql.open(db_conn_str)
                     db_local.execute(
                         "SET application_name = '%s'" %
-                        (self.DBC.sys_conf.application_name + "_" + os.path.splitext(packet_name)[0])
+                        (self.sys_conf.application_name + "_" + os.path.splitext(packet_name)[0])
                     )
 
                     self.prepare_session(db_local, meta_data_json)
 
                     current_pid = get_scalar(db_local, "SELECT pg_backend_pid()")
-                    self.append_pid(current_pid)
-                    self.DBC.logger.log(
+                    self.append_pid(db_name, current_pid)
+                    self.logger.log(
                         "Thread '%s': connected to '%s' database with pid %d" %
                         (thread_name, db_name, current_pid),
                         "Info"
                     )
                 # ======================================================
-                if not self.DBC.args.force:
+                if not self.args.force:
                     packet_status = ActionTracker.get_packet_status(db_local, packet_name)
                     if "hash" in packet_status:
                         if packet_status["hash"] != packet_hash:
                             do_work = False
-                            self.DBC.logger.log(
+                            self.logger.log(
                                 'Thread \'%s\': hash of \'%s\' packet has been changed! Use "--force" option. Stopping...' %
                                 (thread_name, packet_name),
                                 "Error",
@@ -577,7 +602,7 @@ class DBCCore:
                             ctx = Context(db_name, thread_name, current_pid, packet_name,
                                           packet_hash, meta_data, meta_data_json, step)
                             progress = str(round(float(num) * 100 / len(step_files), 2)) + "%"
-                            self.DBC.logger.log(
+                            self.logger.log(
                                 '%s: progress %s' % (ctx.info(), progress),
                                 "Info",
                                 do_print=True
@@ -591,10 +616,10 @@ class DBCCore:
                             )
                             if result == 'exception' and exception_descr == 'connection':
                                 # transaction cancelled or connection stopped
-                                time.sleep(self.DBC.sys_conf.conn_exception_sleep_interval)
+                                time.sleep(self.sys_conf.conn_exception_sleep_interval)
                                 return None, None, True
                             if result == 'exception' and exception_descr == 'skip_step':
-                                self.DBC.logger.log(
+                                self.logger.log(
                                     'Thread \'%s\' (steps_processing): step %s skipped!' %
                                     (thread_name, step[0]),
                                     "Error",
@@ -604,11 +629,13 @@ class DBCCore:
                                 # step successfully complete
                                 ActionTracker.set_step_status(db_local, packet_name, step[0], result)
                             if result == 'exception' and exception_descr is not None and \
-                                    exception_descr not in('connection', 'skip'):
+                                    exception_descr not in('connection', 'skip_step'):
                                 # syntax exception or pre/post check raised exception
                                 ActionTracker.set_step_exception_status(db_local, packet_name, step[0], exception_descr)
                                 return result, exception_descr, False
-                    return None, None, False
+                            if result == 'terminate':
+                                return 'terminate', None, False
+                    return True, None, False
 
                 # ===========================================================================
                 # steps processing
@@ -622,7 +649,7 @@ class DBCCore:
                 for step, query in gen_nsp_files.items():
                     gen_nsp_data[step.replace("_gen_nsp", "_step")] = get_resultset(db_local, query)
 
-                _, exception_descr, do_work = steps_processing()
+                th_result, exception_descr, do_work = steps_processing()
                 # ===========================================================================
             except (
                     postgresql.exceptions.QueryCanceledError,
@@ -632,66 +659,76 @@ class DBCCore:
                     postgresql.exceptions.DeadlockError,
                     AttributeError  # AttributeError: 'Statement' object has no attribute '_row_constructor'
             ) as e:
-                if self.DBC.is_terminate:
-                    return
-                do_work = True
-                self.DBC.logger.log(
-                    'Exception in \'%s\': %s. Reconnecting after %d sec...' %
-                    (thread_name, str(e), self.DBC.sys_conf.conn_exception_sleep_interval),
-                    "Error",
-                    do_print=True
-                )
+                if self.is_terminate:
+                    self.logger.log(
+                        "Terminated '%s' thread for '%s' database" % (thread_name, db_name),
+                        "Error",
+                        do_print=True
+                    )
+                    do_work = False
+                else:
+                    do_work = True
+                    self.logger.log(
+                        'Exception in \'%s\': %s. Reconnecting after %d sec...' %
+                        (thread_name, str(e), self.sys_conf.conn_exception_sleep_interval),
+                        "Error",
+                        do_print=True
+                    )
             except (
                 postgresql.exceptions.AuthenticationSpecificationError,
                 postgresql.exceptions.ClientCannotConnectError
             ) as e:
-                self.DBC.logger.log(
-                    'Exception in %s: \n%s' % (thread_name, exception_helper(self.DBC.sys_conf.detailed_traceback)),
+                self.logger.log(
+                    'Exception in %s: \n%s' % (thread_name, exception_helper(self.sys_conf.detailed_traceback)),
                     "Error",
                     do_print=True
                 )
             except:
                 do_work = False
-                self.set_worker_result(False)
-                exception_descr = exception_helper(self.DBC.sys_conf.detailed_traceback)
+                self.set_worker_result(db_name, WorkerResult.FAIL)
+                exception_descr = exception_helper(self.sys_conf.detailed_traceback)
                 msg = 'Exception in \'%s\' %d on processing packet \'%s\': \n%s' % \
                       (thread_name, current_pid, packet_name, exception_descr)
-                self.DBC.logger.log(msg, "Error", do_print=True)
+                self.logger.log(msg, "Error", do_print=True)
 
-        if not work_breaked and self.DBC.errors_count == 0:
+        if not work_breaked and self.errors_count == 0:
             ActionTracker.set_packet_status(db_local, packet_name, 'done' if exception_descr is None else 'exception')
 
-        if not work_breaked and self.DBC.errors_count > 0:
+        if not work_breaked and self.errors_count > 0:
             ActionTracker.set_packet_status(db_local, packet_name, 'exception')
 
         self.lock.acquire()
-        if current_pid is not None and current_pid in self.get_pids():
-            self.remove_pid(current_pid)
+        if current_pid is not None and current_pid in self.get_pids(db_name):
+            self.remove_pid(db_name, current_pid)
         self.lock.release()
 
-        self.DBC.logger.log("Finished '%s' thread for '%s' database" % (thread_name, db_name), "Info")
-        if exception_descr is None:
-            self.DBC.logger.log(
+        self.logger.log("Finished '%s' thread for '%s' database" % (thread_name, db_name), "Info")
+        if exception_descr is None and th_result is True:
+            self.set_worker_result(db_name, WorkerResult.SUCCESS)
+            self.logger.log(
                 '<-------- Packet \'%s\' finished for \'%s\' database!' % \
-                    (self.DBC.args.packet_name, db_name),
+                    (self.args.packet_name, db_name),
                 "Info",
                 do_print=True
             )
         else:
-            self.set_worker_result(False)
-            self.DBC.logger.log(
+            if th_result == 'terminate':
+                self.set_worker_result(db_name, WorkerResult.TERMINATE)
+            else:
+                self.set_worker_result(db_name, WorkerResult.FAIL)
+            self.logger.log(
                 '<-------- Packet \'%s\' failed for \'%s\' database!' % \
-                    (self.DBC.args.packet_name, db_name),
+                    (self.args.packet_name, db_name),
                 "Error",
                 do_print=True
             )
-        self.set_worker_status_finish()
+        self.set_worker_status_finish(db_name)
 
     def resultset_hook(self, ctx, results):
         try:
             if "hook" in ctx.meta_data_json and len(results) > 0:
                 if ctx.meta_data_json["hook"]["type"] == "matterhook" and \
-                        hasattr(self.DBC, 'matterhooks') and self.DBC.matterhooks is not None:
+                        hasattr(self, 'matterhooks') and self.matterhooks is not None:
                     msg = "#### :gear: %s: %s `->` %s\n" % (ctx.db_name, ctx.packet_name, ctx.step[0])
                     if "message" in ctx.meta_data_json["hook"]:
                         msg += ctx.meta_data_json["hook"]["message"]
@@ -700,8 +737,8 @@ class DBCCore:
                             ctx.meta_data_json["hook"]["show_parameters"] in ("true", "True", "1"):
                         msg += "\n #### Parameters: \n"
                         msg += "```\n"
-                        for arg in vars(self.DBC.args):
-                            msg += '%s = %s\n' % (arg, getattr(self.DBC.args, arg))
+                        for arg in vars(self.args):
+                            msg += '%s = %s\n' % (arg, getattr(self.args, arg))
                         msg += "```"
 
                     any_item = False
@@ -712,13 +749,13 @@ class DBCCore:
                                 msg += "\n```\n" + str(result) + "\n```"
                                 any_item = True
                         if isinstance(result, list) and len(result) > 0 and \
-                                result[0] in self.DBC.sys_conf.plsql_raises:                 # verbosity = raise
+                                result[0] in self.sys_conf.plsql_raises:                 # verbosity = raise
                             if "raise" in ctx.meta_data_json["hook"]["verbosity"] or \
                                     "all" in ctx.meta_data_json["hook"]["verbosity"]:
                                 msg += "\n```\n%s: %s\n```" % (result[0], result[1])
                                 any_item = True
                         if isinstance(result, list) and len(result) > 0 and \
-                                result[0] not in self.DBC.sys_conf.plsql_raises:             # verbosity = resultset
+                                result[0] not in self.sys_conf.plsql_raises:             # verbosity = resultset
                             if "resultset" in ctx.meta_data_json["hook"]["verbosity"] or \
                                     "all" in ctx.meta_data_json["hook"]["verbosity"]:
                                 table = []
@@ -733,22 +770,22 @@ class DBCCore:
                                 any_item = True
 
                     if any_item:
-                        self.DBC.matterhooks[ctx.meta_data_json["hook"]["channel"]].send(
+                        self.matterhooks[ctx.meta_data_json["hook"]["channel"]].send(
                             msg,
                             channel=ctx.meta_data_json["hook"]["channel"],
                             username=ctx.meta_data_json["hook"]["username"]
                             if "username" in ctx.meta_data_json["hook"] else "db_converter"
                         )
         except:
-            exception_descr = exception_helper(self.DBC.sys_conf.detailed_traceback)
-            self.DBC.logger.log(
+            exception_descr = exception_helper(self.sys_conf.detailed_traceback)
+            self.logger.log(
                 '%s: Exception in "resultset_hook" %s' % (ctx.info, exception_descr),
                 "Error",
                 do_print=True
             )
 
     def is_maint_query(self, query):
-        for op in self.DBC.sys_conf.maint_ops:
+        for op in self.sys_conf.maint_ops:
             if re.search(r"\b" + re.escape(op) + r"\b", query):
                 return True
         return False
@@ -761,16 +798,16 @@ class DBCCore:
             conn.settings['client_min_messages'] = ctx.meta_data_json["client_min_messages"]
 
         def filter_notices(msg, msgs_list):
-            if msg.details['severity'] in self.DBC.sys_conf.plsql_raises:
+            if msg.details['severity'] in self.sys_conf.plsql_raises:
                 msgs_list.append([msg.details['severity'], msg.message])
-                self.DBC.logger.log('%s: %s' % (msg.details['severity'], msg.message), "Info", do_print=True)
+                self.logger.log('%s: %s' % (msg.details['severity'], msg.message), "Info", do_print=True)
                 return True
 
         conn.msghook = partial(filter_notices, msgs_list=results)
 
         try:
             if self.is_maint_query(query.lower()):
-                self.DBC.logger.log("%s Executing as maintenance query:\n%s" % (ctx.info(), query), "Info", do_print=True)
+                self.logger.log("%s Executing as maintenance query:\n%s" % (ctx.info(), query), "Info", do_print=True)
                 conn.execute(query)
             else:
                 with conn.xact(isolation=isolation_level) as xact:
@@ -786,8 +823,8 @@ class DBCCore:
                         # ===============================================================================
                         # output to stdout
                         if isinstance(res, tuple):
-                            self.DBC.logger.log('%s' % str(res), "Info", do_print=True)
-                        if isinstance(res, list) and len(res) > 0 and res[0] not in self.DBC.sys_conf.plsql_raises:
+                            self.logger.log('%s' % str(res), "Info", do_print=True)
+                        if isinstance(res, list) and len(res) > 0 and res[0] not in self.sys_conf.plsql_raises:
                             table = []
                             if len(list(res[0].column_names)) != len(list(res[0])):
                                 table.append(['?column?'] * len(list(res[0])))
@@ -800,14 +837,14 @@ class DBCCore:
 
                             table.extend(table_content)
                             table_text = print_table(table)
-                            self.DBC.logger.log('\n%s' % str(table_text), "Info", do_print=True)
+                            self.logger.log('\n%s' % str(table_text), "Info", do_print=True)
                         # ===============================================================================
 
                     if ctx.meta_data_json["type"] == PacketType.NO_COMMIT.value:
-                        self.DBC.logger.log("%s: Performing rollback..." % (ctx.info()), "Info")
+                        self.logger.log("%s: Performing rollback..." % (ctx.info()), "Info")
                         xact.rollback()
         except postgresql.exceptions.OperationError:
-            self.DBC.logger.log("%s: Transaction aborted" % (ctx.info()), "Info", do_print=True)
+            self.logger.log("%s: Transaction aborted" % (ctx.info()), "Info", do_print=True)
 
         # output via hook
         self.resultset_hook(ctx, results)
@@ -831,13 +868,13 @@ class DBCCore:
                 # case 1: both generators is exists
                 if ctx.step[1].find("GEN_NSP_FLD_") > -1 and ctx.step[1].find("GEN_OBJ_FLD_") > -1:
                     if ctx.step[0] not in gen_obj_data:
-                        self.DBC.logger.log(
+                        self.logger.log(
                             "%s: not found generator for this step, but GEN_OBJ_FLD_ is exists" % (ctx.info()),
                             "Error"
                         )
                         raise Exception(msg)
                     if ctx.step[0] not in gen_nsp_data:
-                        self.DBC.logger.log(
+                        self.logger.log(
                             "%s: not found generator for this step, but GEN_NSP_FLD_ is exists" % (ctx.info()),
                             "Error"
                         )
@@ -855,15 +892,15 @@ class DBCCore:
                                     db_local, ctx.packet_name, ctx.step[0], step_hash
                             ):
                                 steps_hashes[step_hash] = ctx.step[0]
-                                self.DBC.logger.log(
+                                self.logger.log(
                                     "%s: action already executed with hash %s" % (ctx.info(), step_hash),
                                     "Info"
                                 )
                             else:
                                 # ========================================================================
-                                if self.DBC.sys_conf.log_sql == 1:
-                                    self.DBC.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
-                                if self.DBC.sys_conf.execute_sql:
+                                if self.sys_conf.log_sql == 1:
+                                    self.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
+                                if self.sys_conf.execute_sql:
                                     if enable_at:
                                         ActionTracker.begin_action(
                                             db_local, ctx.packet_name, ctx.packet_hash, ctx.step[0], ctx.meta_data
@@ -874,25 +911,25 @@ class DBCCore:
                                             db_local, ctx.packet_name, ctx.step[0], step_hash
                                         )
                                     steps_hashes[step_hash] = ctx.step[0]
-                                    self.DBC.logger.log("%s: action finished" % (ctx.info()), "Info")
+                                    self.logger.log("%s: action finished" % (ctx.info()), "Info")
 
                                 if gen_nsp_i[0] is not None and len(str(gen_nsp_i[0])) > 0:  # run maintenance command
-                                    if self.DBC.sys_conf.log_sql == 1:
-                                        self.DBC.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
-                                    if self.DBC.sys_conf.execute_sql:
+                                    if self.sys_conf.log_sql == 1:
+                                        self.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
+                                    if self.sys_conf.execute_sql:
                                         self.execute_q(ctx, db_local, gen_nsp_i[0])
 
                                 if gen_obj_i[0] is not None and len(str(gen_obj_i[0])) > 0:  # run maintenance command
-                                    if self.DBC.sys_conf.log_sql == 1:
-                                        self.DBC.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i[0]), "Info")
-                                    if self.DBC.sys_conf.execute_sql:
+                                    if self.sys_conf.log_sql == 1:
+                                        self.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i[0]), "Info")
+                                    if self.sys_conf.execute_sql:
                                         self.execute_q(ctx, db_local, gen_obj_i[0])
                                 # ========================================================================
                 # case 2: only OBJ generator is exists
                 if ctx.step[1].find("GEN_NSP_FLD_") == -1 and ctx.step[1].find("GEN_OBJ_FLD_") > -1:
                     if ctx.step[0] not in gen_obj_data:
                         msg = "%s: not found generator for this step, but GEN_OBJ_FLD_ is exists" % (ctx.info())
-                        self.DBC.logger.log(msg, "Error")
+                        self.logger.log(msg, "Error")
                         raise Exception(msg)
                     for gen_obj_i in gen_obj_data[ctx.step[0]]:
                         gen_query = parse_query_placeholder(ctx.step[1], gen_obj_i, 'GEN_OBJ_FLD_')
@@ -901,27 +938,27 @@ class DBCCore:
                             continue
                         if enable_at and ActionTracker.is_action_exists(db_local, ctx.packet_name, ctx.step[0], step_hash):
                             steps_hashes[step_hash] = ctx.step[0]
-                            self.DBC.logger.log(
+                            self.logger.log(
                                 "%s: already executed with hash %s" % (ctx.info(), step_hash),
                                 "Info"
                             )
                         else:
                             # ========================================================================
-                            if self.DBC.sys_conf.log_sql == 1:
-                                self.DBC.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
-                            if self.DBC.sys_conf.execute_sql:
+                            if self.sys_conf.log_sql == 1:
+                                self.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
+                            if self.sys_conf.execute_sql:
                                 if enable_at: ActionTracker.begin_action(
                                     db_local, ctx.packet_name, ctx.packet_hash, ctx.step[0], ctx.meta_data
                                 )
                                 self.execute_q(ctx, db_local, gen_query)
                                 if enable_at: ActionTracker.apply_action(db_local, ctx.packet_name, ctx.step[0], step_hash)
                                 steps_hashes[step_hash] = ctx.step[0]
-                                self.DBC.logger.log("%s: action finished" % (ctx.info()), "Info")
+                                self.logger.log("%s: action finished" % (ctx.info()), "Info")
 
                             if gen_obj_i[0] is not None and len(str(gen_obj_i[0])) > 0:  # run maintenance command
-                                if self.DBC.sys_conf.log_sql == 1:
-                                    self.DBC.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i[0]), "Info")
-                                if self.DBC.sys_conf.execute_sql:
+                                if self.sys_conf.log_sql == 1:
+                                    self.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i[0]), "Info")
+                                if self.sys_conf.execute_sql:
                                     self.execute_q(ctx, db_local, gen_obj_i[0])
 
                             # ========================================================================
@@ -929,7 +966,7 @@ class DBCCore:
                 if ctx.step[1].find("GEN_NSP_FLD_") > -1 and ctx.step[1].find("GEN_OBJ_FLD_") == -1:
                     if ctx.step[0] not in gen_nsp_data:
                         msg = "%s: not found generator for this step, but GEN_NSP_FLD_ is exists" % (ctx.info())
-                        self.DBC.logger.log(msg, "Error")
+                        self.logger.log(msg, "Error")
                         raise Exception(msg)
                     for gen_nsp_i in gen_nsp_data[ctx.step[0]]:
                         gen_query = parse_query_placeholder(ctx.step[1], gen_nsp_i, 'GEN_NSP_FLD_')
@@ -938,24 +975,24 @@ class DBCCore:
                             continue
                         if enable_at and ActionTracker.is_action_exists(db_local, ctx.packet_name, ctx.step[0], step_hash):
                             steps_hashes[step_hash] = ctx.step[0]
-                            self.DBC.logger.log("%s: action already executed with hash %s" % (ctx.info(), step_hash), "Info")
+                            self.logger.log("%s: action already executed with hash %s" % (ctx.info(), step_hash), "Info")
                         else:
                             # ========================================================================
-                            if self.DBC.sys_conf.log_sql == 1:
-                                self.DBC.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
-                            if self.DBC.sys_conf.execute_sql:
+                            if self.sys_conf.log_sql == 1:
+                                self.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
+                            if self.sys_conf.execute_sql:
                                 if enable_at: ActionTracker.begin_action(
                                     db_local, ctx.packet_name, ctx.packet_hash, ctx.step[0], ctx.meta_data
                                 )
                                 self.execute_q(ctx, db_local, gen_query)
                                 if enable_at: ActionTracker.apply_action(db_local, ctx.packet_name, ctx.step[0], step_hash)
                                 steps_hashes[step_hash] = ctx.step[0]
-                                self.DBC.logger.log("%s: action finished" % (ctx.info()), "Info")
+                                self.logger.log("%s: action finished" % (ctx.info()), "Info")
 
                             if gen_nsp_i[0] is not None and len(str(gen_nsp_i[0])) > 0:  # run maintenance command
-                                if self.DBC.sys_conf.log_sql == 1:
-                                    self.DBC.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
-                                if self.DBC.sys_conf.execute_sql:
+                                if self.sys_conf.log_sql == 1:
+                                    self.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
+                                if self.sys_conf.execute_sql:
                                     self.execute_q(ctx, db_local, gen_nsp_i[0])
                             # ========================================================================
                 # case 4: no generators
@@ -964,15 +1001,15 @@ class DBCCore:
                     if step_hash not in steps_hashes:
                         if enable_at and ActionTracker.is_action_exists(db_local, ctx.packet_name, ctx.step[0], step_hash):
                             steps_hashes[step_hash] = ctx.step[0]
-                            self.DBC.logger.log(
+                            self.logger.log(
                                 "%s: action already executed with hash %s" % (ctx.info(), step_hash),
                                 "Info"
                             )
                         else:
                             # ========================================================================
-                            if self.DBC.sys_conf.log_sql == 1:
-                                self.DBC.logger.log("%s:\n%s" % (ctx.info(), ctx.step[1]), "Info")
-                            if self.DBC.sys_conf.execute_sql:
+                            if self.sys_conf.log_sql == 1:
+                                self.logger.log("%s:\n%s" % (ctx.info(), ctx.step[1]), "Info")
+                            if self.sys_conf.execute_sql:
                                 if enable_at: ActionTracker.begin_action(
                                     db_local, ctx.packet_name, ctx.packet_hash, ctx.step[0], ctx.meta_data
                                 )
@@ -980,7 +1017,7 @@ class DBCCore:
                                 if enable_at:
                                     ActionTracker.apply_action(db_local, ctx.packet_name, ctx.step[0], step_hash)
                                 steps_hashes[step_hash] = ctx.step[0]
-                                self.DBC.logger.log("%s: action finished" % (ctx.info()), "Info")
+                                self.logger.log("%s: action finished" % (ctx.info()), "Info")
                             # ========================================================================
             except (
                 postgresql.exceptions.PLPGSQLRaiseError
@@ -1003,34 +1040,34 @@ class DBCCore:
                 40000	transaction_rollback
                 40P01	deadlock_detected
                 '''
-                if self.DBC.is_terminate:
-                    return 'done', None
-                self.DBC.logger.log(
+                if self.is_terminate:
+                    return 'terminate', None
+                self.logger.log(
                     'Exception in %s (execute_step): %s. Reconnecting after %d sec...' %
-                    (ctx.info(), str(e), self.DBC.sys_conf.conn_exception_sleep_interval),
+                    (ctx.info(), str(e), self.sys_conf.conn_exception_sleep_interval),
                     "Error",
                     do_print=True
                 )
-                time.sleep(self.DBC.sys_conf.conn_exception_sleep_interval)
-                if self.DBC.args.skip_step_errors:
+                time.sleep(self.sys_conf.conn_exception_sleep_interval)
+                if self.args.skip_step_errors:
                     return 'exception', 'skip_step'
-                elif self.DBC.args.skip_action_errors:
+                elif self.args.skip_action_errors:
                     steps_hashes[step_hash] = ctx.step[0]
-                    self.DBC.logger.log(
+                    self.logger.log(
                         '%s (execute_step): action %s in step %s skipped!' %
                         (ctx.info(), step_hash, ctx.step[0]),
                         "Error",
                         do_print=True
                     )
-                    self.DBC.errors_count += 1
+                    self.errors_count += 1
                     execute_step_do_work = True
                 elif e.code == '40P01':
                     return 'exception', 'deadlock_detected'
                 else:
                     return 'exception', 'connection'
             except:
-                exception_descr = exception_helper(self.DBC.sys_conf.detailed_traceback)
-                self.DBC.logger.log(
+                exception_descr = exception_helper(self.sys_conf.detailed_traceback)
+                self.logger.log(
                     'Exception in "execute_step" %s: \n%s' % (ctx.info(), exception_descr),
                     "Error",
                     do_print=True
@@ -1042,7 +1079,7 @@ class DBCCore:
     def raise_error_logic(self, ctx):
         try:
             if "hook" in ctx.meta_data_json:
-                if ctx.meta_data_json["hook"]["type"] == "matterhook" and self.DBC.matterhooks is not None:
+                if ctx.meta_data_json["hook"]["type"] == "matterhook" and self.matterhooks is not None:
                     msg = "#### :comet: %s: %s `->` %s\n" % (ctx.db_name, ctx.packet_name, ctx.step[0])
                     msg += ctx.meta_data_json["hook"]["message"]
                     exc_type, exc_value, _ = sys.exc_info()
@@ -1052,19 +1089,19 @@ class DBCCore:
                             ctx.meta_data_json["hook"]["show_parameters"] in ("true", "True", "1"):
                         msg += "\n #### Parameters: \n"
                         msg += "```\n"
-                        for arg in vars(self.DBC.args):
-                            msg += '%s = %s\n' % (arg, getattr(self.DBC.args, arg))
+                        for arg in vars(self.args):
+                            msg += '%s = %s\n' % (arg, getattr(self.args, arg))
                         msg += "```"
 
-                    self.DBC.matterhooks[ctx.meta_data_json["hook"]["channel"]].send(
+                    self.matterhooks[ctx.meta_data_json["hook"]["channel"]].send(
                         msg,
                         channel=ctx.meta_data_json["hook"]["channel"],
                         username=ctx.meta_data_json["hook"]["username"]
                         if "username" in ctx.meta_data_json["hook"] else "db_converter"
                     )
         except:
-            exception_descr = exception_helper(self.DBC.sys_conf.detailed_traceback)
-            self.DBC.logger.log(
+            exception_descr = exception_helper(self.sys_conf.detailed_traceback)
+            self.logger.log(
                 'Exception in "raise_error_logic" %s: \n%s' % (ctx.info(), exception_descr),
                 "Error",
                 do_print=True
@@ -1101,25 +1138,25 @@ class DBCCore:
                                 continue
 
                             # ========================================================================
-                            if self.DBC.sys_conf.log_sql == 1:
-                                self.DBC.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
-                            if self.DBC.sys_conf.execute_sql:
+                            if self.sys_conf.log_sql == 1:
+                                self.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
+                            if self.sys_conf.execute_sql:
                                 execute_ro(db_local, gen_query)
                                 steps_hashes[step_hash] = ctx.step[0]
-                                self.DBC.logger.log("%s: action finished" % (ctx.info()), "Info")
+                                self.logger.log("%s: action finished" % (ctx.info()), "Info")
 
                             if gen_nsp_i[0] is not None and len(str(gen_nsp_i[0])) > 0:  # run maintenance command
-                                if self.DBC.sys_conf.log_sql == 1:
-                                    self.DBC.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
+                                if self.sys_conf.log_sql == 1:
+                                    self.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
 
-                                if self.DBC.sys_conf.execute_sql:
+                                if self.sys_conf.execute_sql:
                                     execute_ro(db_local, gen_nsp_i[0])
 
                             if gen_obj_i[0] is not None and len(str(gen_obj_i[0])) > 0:  # run maintenance command
-                                if self.DBC.sys_conf.log_sql == 1:
-                                    self.DBC.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i[0]), "Info")
+                                if self.sys_conf.log_sql == 1:
+                                    self.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i[0]), "Info")
 
-                                if self.DBC.sys_conf.execute_sql:
+                                if self.sys_conf.execute_sql:
                                     execute_ro(db_local, gen_obj_i[0])
                                 # ========================================================================
                 # case 2: only OBJ generator is exists
@@ -1131,18 +1168,18 @@ class DBCCore:
                             continue
 
                         # ========================================================================
-                        if self.DBC.sys_conf.log_sql == 1:
-                            self.DBC.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
+                        if self.sys_conf.log_sql == 1:
+                            self.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
 
-                        if self.DBC.sys_conf.execute_sql:
+                        if self.sys_conf.execute_sql:
                             execute_ro(db_local, gen_query)
                             steps_hashes[step_hash] = ctx.step[0]
-                            self.DBC.logger.log("%s: action finished" % (ctx.info()), "Info")
+                            self.logger.log("%s: action finished" % (ctx.info()), "Info")
 
                         if gen_obj_i[0] is not None and len(str(gen_obj_i[0])) > 0:  # run maintenance command
-                            if self.DBC.sys_conf.log_sql == 1:
-                                self.DBC.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i[0]), "Info")
-                            if self.DBC.sys_conf.execute_sql:
+                            if self.sys_conf.log_sql == 1:
+                                self.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i[0]), "Info")
+                            if self.sys_conf.execute_sql:
                                 execute_ro(db_local, gen_obj_i[0])
                         # ========================================================================
                 # case 3: only NSP generator is exists
@@ -1154,19 +1191,19 @@ class DBCCore:
                             continue
 
                         # ========================================================================
-                        if self.DBC.sys_conf.log_sql == 1:
-                            self.DBC.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
+                        if self.sys_conf.log_sql == 1:
+                            self.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
 
-                        if self.DBC.sys_conf.execute_sql:
+                        if self.sys_conf.execute_sql:
                             execute_ro(db_local, gen_query)
                             steps_hashes[step_hash] = ctx.step[0]
-                            self.DBC.logger.log("%s: action finished" % (ctx.info()), "Info")
+                            self.logger.log("%s: action finished" % (ctx.info()), "Info")
 
                         if gen_nsp_i[0] is not None and len(str(gen_nsp_i[0])) > 0:  # run maintenance command
-                            if self.DBC.sys_conf.log_sql == 1:
-                                self.DBC.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
+                            if self.sys_conf.log_sql == 1:
+                                self.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
 
-                            if self.DBC.sys_conf.execute_sql:
+                            if self.sys_conf.execute_sql:
                                 execute_ro(db_local, gen_nsp_i[0])
                         # ========================================================================
                 # case 4: no generators
@@ -1174,13 +1211,13 @@ class DBCCore:
                     step_hash = hashlib.md5(ctx.step[1].encode()).hexdigest()
                     if step_hash not in steps_hashes:
                             # ========================================================================
-                            if self.DBC.sys_conf.log_sql == 1:
-                                self.DBC.logger.log("%s:\n%s" % (ctx.info(), ctx.step[1]), "Info")
+                            if self.sys_conf.log_sql == 1:
+                                self.logger.log("%s:\n%s" % (ctx.info(), ctx.step[1]), "Info")
 
-                            if self.DBC.sys_conf.execute_sql:
+                            if self.sys_conf.execute_sql:
                                 execute_ro(db_local, ctx.step[1])
                                 steps_hashes[step_hash] = ctx.step[0]
-                                self.DBC.logger.log("%s: action finished" % (ctx.info()), "Info")
+                                self.logger.log("%s: action finished" % (ctx.info()), "Info")
                             # ========================================================================
             except (
                     postgresql.exceptions.PLPGSQLRaiseError,
@@ -1204,32 +1241,34 @@ class DBCCore:
                 40000	transaction_rollback
                 40P01	deadlock_detected
                 '''
-                self.DBC.logger.log(
+                if self.is_terminate:
+                    return 'terminate', None
+                self.logger.log(
                     'Exception in %s (execute_ro_step): %s. Reconnecting after %d sec...' %
-                    (ctx.info(), str(e), self.DBC.sys_conf.conn_exception_sleep_interval),
+                    (ctx.info(), str(e), self.sys_conf.conn_exception_sleep_interval),
                     "Error",
                     do_print=True
                 )
-                time.sleep(self.DBC.sys_conf.conn_exception_sleep_interval)
-                if self.DBC.args.skip_step_errors:
+                time.sleep(self.sys_conf.conn_exception_sleep_interval)
+                if self.args.skip_step_errors:
                     return 'exception', 'skip_step'
-                elif self.DBC.args.skip_action_errors:
+                elif self.args.skip_action_errors:
                     steps_hashes[step_hash] = ctx.step[0]
-                    self.DBC.logger.log(
+                    self.logger.log(
                         '%s (execute_ro_step): action %s in step %s skipped!' %
                         (ctx.info(), step_hash, ctx.step[0]),
                         "Error",
                         do_print=True
                     )
-                    self.DBC.errors_count += 1
+                    self.errors_count += 1
                     execute_step_do_work = True
                 elif e.code == '40P01':
                     return 'exception', 'deadlock_detected'
                 else:
                     return 'exception', 'connection'
             except:
-                exception_descr = exception_helper(self.DBC.sys_conf.detailed_traceback)
-                self.DBC.logger.log(
+                exception_descr = exception_helper(self.sys_conf.detailed_traceback)
+                self.logger.log(
                     'Exception in %s "execute_ro_step": \n%s' % (ctx.info(), exception_descr),
                     "Error",
                     do_print=True

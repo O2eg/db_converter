@@ -55,7 +55,7 @@ class PSCLogger(Thread):
                 del self.log_queue[:]
                 self.lock_logger.release()
             except:
-                print('Error in PSCLogger flush_data: \n%s' % exception_helper(self.DBC.sys_conf.detailed_traceback))
+                print('Error in PSCLogger flush_data: \n%s' % exception_helper(self.sys_conf.detailed_traceback))
                 self.lock_logger.release()
                 self.stop()
 
@@ -75,15 +75,21 @@ class PSCLogger(Thread):
         self.do_stop = True
 
     def log(self, msg, code, do_print=False):
-        if do_print:
-            print(code + ": " + msg)
         self.lock_logger.acquire()
         if code == 'Debug' and self.log_level == logging.DEBUG:
             self.log_queue.append(['Debug', msg])
+            if do_print:
+                print(code + ": " + msg)
         if code == 'Info' and self.log_level <= logging.INFO:
             self.log_queue.append(['Info', msg])
+            if do_print:
+                print(code + ": " + msg)
         if code == 'Warning' and self.log_level <= logging.WARNING:
             self.log_queue.append(['Warning', msg])
+            if do_print:
+                print(code + ": " + msg)
         if code == 'Error' and self.log_level <= logging.ERROR:
             self.log_queue.append(['Error', msg])
+            if do_print:
+                print(code + ": " + msg)
         self.lock_logger.release()
