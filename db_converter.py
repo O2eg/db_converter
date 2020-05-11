@@ -119,13 +119,13 @@ class DBCParams:
             default=False
         )
         parser.add_argument(
-            "--skip-step-errors",
+            "--skip-step-cancel",
             help="Skip whole step on first error like Deadlock, QueryCanceledError",
             action='store_true',
             default=False
         )
         parser.add_argument(
-            "--skip-action-errors",
+            "--skip-action-cancel",
             help="Skip action errors like Deadlock, QueryCanceledError",
             action='store_true',
             default=False
@@ -311,21 +311,22 @@ class MainRoutine(DBCParams, DBCCore):
 
     dbs = []        # lists of databases for processing
 
-    def terminate_conns(self, db_conn, db_name, app_name, packet):
+    def terminate_conns(self, db_conn, db_name, app_name, packet, terminate=True):
         found_conns = False
+        cmd = 'pg_terminate_backend' if terminate else 'pg_cancel_backend'
         print("============================================")
         print("Database: %s \n" % db_name)
         for rec in get_resultset(db_conn, """
             SELECT datname,
                    pid, 
                    client_addr,
-                   pg_terminate_backend(pid)
+                   %s(pid)
             FROM pg_stat_activity
             WHERE pid <> pg_backend_pid()
               AND datname = current_database()
               AND application_name = '%s_%s'
-            """ % (app_name, packet)
-                                 ):
+            """ % (cmd, app_name, packet)
+        ):
             print('%s     %s      %s      %s' % (rec[0], rec[1], rec[2], rec[3]))
             found_conns = True
         if not found_conns:

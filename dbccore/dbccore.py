@@ -1049,9 +1049,9 @@ class DBCCore:
                     do_print=True
                 )
                 time.sleep(self.sys_conf.conn_exception_sleep_interval)
-                if self.args.skip_step_errors:
+                if self.args.skip_step_cancel:
                     return 'exception', 'skip_step'
-                elif self.args.skip_action_errors:
+                elif self.args.skip_action_cancel:
                     steps_hashes[step_hash] = ctx.step[0]
                     self.logger.log(
                         '%s (execute_step): action %s in step %s skipped!' %
@@ -1250,9 +1250,9 @@ class DBCCore:
                     do_print=True
                 )
                 time.sleep(self.sys_conf.conn_exception_sleep_interval)
-                if self.args.skip_step_errors:
+                if self.args.skip_step_cancel:
                     return 'exception', 'skip_step'
-                elif self.args.skip_action_errors:
+                elif self.args.skip_action_cancel:
                     steps_hashes[step_hash] = ctx.step[0]
                     self.logger.log(
                         '%s (execute_ro_step): action %s in step %s skipped!' %
