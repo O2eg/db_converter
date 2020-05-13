@@ -18,7 +18,7 @@ VERSION = 2.6
 
 class SysConf:
     plsql_raises = ['DEBUG', 'LOG', 'INFO', 'NOTICE', 'WARNING', 'EXCEPTION']
-    maint_ops = ['concurrently', 'vacuum', 'analyze']
+    maint_ops = ['index%concurrently', 'vacuum', 'analyze', 'create%database%with', 'drop%database']
 
     def __init__(self, conf):
         self.current_dir = os.path.dirname(os.path.realpath(__file__))

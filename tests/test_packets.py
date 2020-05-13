@@ -12,7 +12,7 @@ class Struct:
         self.__dict__.update(entries)
 
 
-class TestPackets(unittest.TestCase):
+class TestDBCPackets(unittest.TestCase):
     wipes = []
     runs = []
     conf_file = 'db_converter_test.conf'
@@ -27,12 +27,13 @@ class TestPackets(unittest.TestCase):
             if f.startswith('test_') and os.path.isdir(os.path.join(packets_dir, f)) and f not in [
                 'test_sleep_sigint',
                 'test_skip_step_cancel',
-                'test_skip_action_cancel'
+                'test_skip_action_cancel',
+                'test_prepare_dbs'
             ]
         ]:
             args = dict(
                 packet_name=f_name,
-                db_name='test_dbc',
+                db_name='test_dbc_01',
                 template=None,
                 list=None,
                 status=None,
@@ -46,7 +47,7 @@ class TestPackets(unittest.TestCase):
 
             args = dict(
                 packet_name=f_name,
-                db_name='test_dbc',
+                db_name='test_dbc_01',
                 template=None,
                 list=None,
                 status=None,
@@ -65,7 +66,10 @@ class TestPackets(unittest.TestCase):
     def test_packets(self):
         for args in self.wipes:
             res = MainRoutine(args, self.conf_file).run()
-            self.assertTrue(res.result_code[args.db_name] == ResultCode.NOTHING_TODO)
+            self.assertTrue(
+                res.result_code[args.db_name] == ResultCode.NOTHING_TODO or
+                res.result_code[args.db_name] == ResultCode.SUCCESS
+            )
             self.assertTrue(res.packet_status[args.db_name] == PacketStatus.NEW)
 
         for args in self.runs:
@@ -83,7 +87,7 @@ class TestDBCLock(unittest.TestCase):
     run_params = None
     conf_file = 'db_converter_test.conf'
     packet_name = 'test_sleep'
-    db_name = 'test_dbc'
+    db_name = 'test_dbc_01'
 
     def setUp(self):
         wipe_args = dict(
@@ -139,7 +143,7 @@ class TestDBCLock(unittest.TestCase):
 class TestDBCLockKey(unittest.TestCase):
     conf_file = 'db_converter_test.conf'
     packet_name = 'test_sleep'
-    db_name = 'test_dbc'
+    db_name = 'test_dbc_01'
 
     def test_lock(self):
         parser = DBCParams.get_arg_parser()
@@ -165,7 +169,7 @@ class TestDBCLockKey(unittest.TestCase):
 class TestDBCSignal(unittest.TestCase):
     conf_file = 'db_converter_test.conf'
     packet_name = 'test_sleep_sigint'
-    db_name = 'test_dbc'
+    db_name = 'test_dbc_01'
 
     def test_sigint(self):
         parser = DBCParams.get_arg_parser()
@@ -226,7 +230,7 @@ class TestDBCUnknownDB(unittest.TestCase):
 class TestDBCConnErr(unittest.TestCase):
     conf_file = 'db_converter_test.conf'
     packet_name = 'test_sleep'
-    db_name = 'test_dbc'
+    db_name = 'test_dbc_01'
 
     def test_conn_err(self):
         parser = DBCParams.get_arg_parser()
@@ -234,6 +238,7 @@ class TestDBCConnErr(unittest.TestCase):
 
         dbc = MainRoutine(args, self.conf_file)
         db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+        ActionTracker.init_tbls(db_conn)
         ActionTracker.set_packet_unlock(db_conn, self.packet_name)
         db_conn.close()
 
@@ -259,7 +264,7 @@ class TestDBCConnErr(unittest.TestCase):
 class TestDBCSkipStepCancel(unittest.TestCase):
     conf_file = 'db_converter_test.conf'
     packet_name = 'test_skip_step_cancel'
-    db_name = 'test_dbc'
+    db_name = 'test_dbc_01'
 
     def test_skip_step_cancel(self):
         parser = DBCParams.get_arg_parser()
@@ -303,7 +308,7 @@ class TestDBCSkipStepCancel(unittest.TestCase):
 class TestDBCSkipActionCancel(unittest.TestCase):
     conf_file = 'db_converter_test.conf'
     packet_name = 'test_skip_action_cancel'
-    db_name = 'test_dbc'
+    db_name = 'test_dbc_01'
 
     def test_skip_action_cancel(self):
         parser = DBCParams.get_arg_parser()
@@ -344,5 +349,24 @@ class TestDBCSkipActionCancel(unittest.TestCase):
         self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
 
 
+class TestDBCPrepareDBs(unittest.TestCase):
+    conf_file = 'db_converter_test.conf'
+    packet_name = 'test_prepare_dbs'
+    db_name = 'pg_db'
+
+    def test_create_db(self):
+        parser = DBCParams.get_arg_parser()
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name, '--db-name=' + self.db_name, '--wipe'
+        ]), self.conf_file).run()
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name, '--db-name=' + self.db_name, '--unlock'
+        ]), self.conf_file).run()
+        res_1 = MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name, '--db-name=' + self.db_name
+        ]), self.conf_file).run()
+
+
 if __name__ == '__main__':
+    unittest.main(defaultTest="TestDBCPrepareDBs", exit=False)
     unittest.main()

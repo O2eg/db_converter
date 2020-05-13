@@ -14,7 +14,7 @@ class ActionTracker:
                  WHERE  c.relname in ('dbc_packets', 'dbc_steps', 'dbc_actions', 'dbc_locks')
                     AND c.relkind = 'r'
                     AND n.nspname = 'public'
-            ) != 3
+            ) != 4
             THEN
                 DROP TABLE IF EXISTS public.dbc_packets CASCADE;
                 DROP TABLE IF EXISTS public.dbc_steps CASCADE;

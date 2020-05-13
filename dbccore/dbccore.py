@@ -785,8 +785,17 @@ class DBCCore:
             )
 
     def is_maint_query(self, query):
+        is_maint = True
         for op in self.sys_conf.maint_ops:
-            if re.search(r"\b" + re.escape(op) + r"\b", query):
+            cmds = op.split('%')
+            match = 0
+            if len(cmds) > 1:
+                for cmd in cmds:
+                    if re.search(r"\b" + re.escape(cmd) + r"\b", query):
+                        match += 1
+                if len(cmds) == match:
+                    return True
+            elif re.search(r"\b" + re.escape(op) + r"\b", query):
                 return True
         return False
 
