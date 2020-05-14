@@ -2,6 +2,16 @@ from psc.pgstatcommon.pg_stat_common import *
 
 
 class ActionTracker:
+
+    @staticmethod
+    def cleanup(db_conn):
+        db_conn.execute("""
+            DROP TABLE IF EXISTS public.dbc_packets CASCADE;
+            DROP TABLE IF EXISTS public.dbc_steps CASCADE;
+            DROP TABLE IF EXISTS public.dbc_actions CASCADE;
+            DROP TABLE IF EXISTS public.dbc_locks CASCADE;
+        """)
+
     @staticmethod
     def init_tbls(db_conn):
         db_conn.execute("""

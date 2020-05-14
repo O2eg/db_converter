@@ -355,10 +355,31 @@ class TestDBCPrepareDBs(unittest.TestCase):
     db_name = 'pg_db'
 
     def test_create_db(self):
+        global call_TestDBCPrepareDBs
+        if call_TestDBCPrepareDBs:
+            return
+
         parser = DBCParams.get_arg_parser()
-        MainRoutine(parser.parse_args([
+
+        args = parser.parse_args([
             '--packet-name=' + self.packet_name, '--db-name=' + self.db_name, '--wipe'
-        ]), self.conf_file).run()
+        ])
+        dbc = MainRoutine(args, self.conf_file)
+        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+        ActionTracker.cleanup(db_conn)
+
+        db_conn.execute("""
+            SELECT pg_terminate_backend(pid)
+            FROM pg_stat_activity
+            WHERE pid <> pg_backend_pid()
+                AND datname in ('test_dbc_01', 'test_dbc_02')
+        """)
+
+        db_conn.execute("""DROP DATABASE test_dbc_01""")
+        db_conn.execute("""DROP DATABASE test_dbc_02""")
+        db_conn.close()
+
+        MainRoutine(args, self.conf_file).run()
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name, '--db-name=' + self.db_name, '--unlock'
         ]), self.conf_file).run()
@@ -366,7 +387,10 @@ class TestDBCPrepareDBs(unittest.TestCase):
             '--packet-name=' + self.packet_name, '--db-name=' + self.db_name
         ]), self.conf_file).run()
 
+        call_TestDBCPrepareDBs = True
+
 
 if __name__ == '__main__':
+    call_TestDBCPrepareDBs = False
     unittest.main(defaultTest="TestDBCPrepareDBs", exit=False)
     unittest.main()
