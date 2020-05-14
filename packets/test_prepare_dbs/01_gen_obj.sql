@@ -7,7 +7,7 @@ select null as maint, case when not exists(select 1 from pg_database where datna
     LC_COLLATE = ''en_US.UTF-8''
     LC_CTYPE = ''en_US.UTF-8''
     TABLESPACE = pg_default
-	template=template0
+    template = template0
     CONNECTION LIMIT = -1;'
 	else '' end
 union
@@ -19,7 +19,7 @@ select null, case when not exists(select 1 from pg_database where datname = 'tes
     LC_COLLATE = ''en_US.UTF-8''
     LC_CTYPE = ''en_US.UTF-8''
     TABLESPACE = pg_default
-	template=template0
+    template = template0
     CONNECTION LIMIT = -1;'
 	else '' end
 ------------------
