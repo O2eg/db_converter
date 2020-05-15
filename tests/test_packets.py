@@ -28,7 +28,9 @@ class TestDBCPackets(unittest.TestCase):
                 'test_sleep_sigint',
                 'test_skip_step_cancel',
                 'test_skip_action_cancel',
-                'test_prepare_dbs'
+                'test_prepare_dbs',
+                'test_blocker_tx',
+                'test_wait_tx'
             ]
         ]:
             args = dict(
@@ -388,6 +390,45 @@ class TestDBCPrepareDBs(unittest.TestCase):
         ]), self.conf_file).run()
 
         call_TestDBCPrepareDBs = True
+
+
+class TestDBCBlockerTxTimeout(unittest.TestCase):
+    conf_file = 'db_converter_test.conf'
+    packet_name = 'test_blocker_tx'
+    db_name = 'test_dbc_01'
+
+    def test_skip_action_cancel(self):
+        parser = DBCParams.get_arg_parser()
+        args = parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name
+        ])
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--wipe'
+        ]), self.conf_file).run()
+
+        main = MainRoutine(args, self.conf_file)
+        db_conn = postgresql.open(main.sys_conf.dbs_dict[self.db_name])
+        ActionTracker.set_packet_unlock(db_conn, self.packet_name)
+        db_conn.close()
+
+        @threaded
+        def emulate_workload():
+            time.sleep(1)
+            th_db_conn = postgresql.open(main.sys_conf.dbs_dict[self.db_name])
+            th_db_conn.execute("""vacuum full public.test_blocker_tx_tbl""")
+            th_db_conn.close()
+
+        main.append_thread(self.db_name + '_ext', emulate_workload())
+
+        res_2 = main.run()
+
+        self.assertTrue(main.lock_observer_blocker_cnt == 1)
+        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
+        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
 
 
 if __name__ == '__main__':

@@ -90,6 +90,8 @@ class DBCCore:
     workers_status = {}     # key is "db_name", boolean value: True is active, False is finished
     workers_result = {}     # key is "db_name", value is WorkerResult
     db_conns = {}
+    lock_observer_blocker_cnt = 0
+    lock_observer_wait_cnt = 0
 
     def get_pids(self, db_name):
         try:
@@ -189,6 +191,7 @@ class DBCCore:
                             self.lock.acquire()
                             if pid in self.get_pids(db_name): self.remove_pid(db_name, pid)
                             self.lock.release()
+                            self.lock_observer_blocker_cnt += 1
                             self.logger.log('%s: stopped pid %d as blocker' % (thread_name, pid), "Info")
                         # ===========================================================================
                         # case 2: how long to wait for access to relations
@@ -209,6 +212,7 @@ class DBCCore:
                             self.lock.acquire()
                             if pid in self.get_pids(db_name): self.remove_pid(db_name, pid)
                             self.lock.release()
+                            self.lock_observer_wait_cnt += 1
                             self.logger.log('%s: stopped pid %d with heavyweight lock' % (thread_name, pid), "Info")
                         # ===========================================================================
                     self.logger.log(

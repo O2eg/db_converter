@@ -1,0 +1,12 @@
+{
+	"responsible": "no name",
+	"task_id": "TASK-1",
+	"description": "no test packet",
+	"type": "default",
+	"hook": {
+		"type": "matterhook",
+		"username": "db_converter",
+		"channel": "dbc-test",
+		"message": "Message from test packet :construction:"
+	}
+}
