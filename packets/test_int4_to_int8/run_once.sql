@@ -5,8 +5,8 @@ CREATE TABLE public.test_tbl
 (
     id serial,
     fld_1 bigint,
-	fld_2 text
+    fld_2 text
 );
 
 INSERT INTO public.test_tbl(fld_1, fld_2)
-	 SELECT T.v, 'text_' || T.v from(SELECT generate_series(1, 200010) as v) T;
+    SELECT T.v, 'text_' || T.v from(SELECT generate_series(1, 200010) as v) T;
