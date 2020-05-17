@@ -30,7 +30,8 @@ class TestDBCPackets(unittest.TestCase):
                 'test_skip_action_cancel',
                 'test_prepare_dbs',
                 'test_blocker_tx',
-                'test_wait_tx'
+                'test_wait_tx',
+                'test_int4_to_int8'
             ]
         ]:
             args = dict(
@@ -477,6 +478,56 @@ class TestDBCWaitTxTimeout(unittest.TestCase):
 
         self.assertTrue(res.packet_status[self.db_name] == PacketStatus.DONE)
         self.assertTrue(res.result_code[self.db_name] == ResultCode.SUCCESS)
+
+
+class TestDBCInt4ToInt8(unittest.TestCase):
+    conf_file = 'db_converter_test.conf'
+    packet_name = 'test_int4_to_int8'
+    db_name_01 = 'test_dbc_01'
+    db_name_02 = 'test_dbc_02'
+
+    def test_int4_to_int8(self):
+        parser = DBCParams.get_arg_parser()
+        args = parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=test_dbc_*',
+        ])
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=test_dbc_*',
+            '--wipe'
+        ]), self.conf_file).run()
+
+        main = MainRoutine(args, self.conf_file)
+
+        @threaded
+        def emulate_workload(db_name):
+            time.sleep(1)
+            th_db_conn = postgresql.open(db_name)
+            i = 1
+            try:
+                for i in range(1, 500):
+                    th_db_conn.execute("""
+                        INSERT INTO public.test_tbl(fld_1, fld_2)
+                            VALUES (%d, 'emulate_workload_%d');
+                    """ % (i, i))
+                    time.sleep(0.01)
+                    i += 1
+            except:
+                return
+            th_db_conn.close()
+            print('================> thread emulate_workload finished for DB %s' % db_name)
+
+        main.append_thread('test_dbc_01_ext_th', emulate_workload(main.sys_conf.dbs_dict[self.db_name_01]))
+        main.append_thread('test_dbc_02_ext_th', emulate_workload(main.sys_conf.dbs_dict[self.db_name_02]))
+
+        res = main.run()
+
+        self.assertTrue(res.packet_status[self.db_name_01] == PacketStatus.DONE)
+        self.assertTrue(res.result_code[self.db_name_01] == ResultCode.SUCCESS)
+        self.assertTrue(res.packet_status[self.db_name_02] == PacketStatus.DONE)
+        self.assertTrue(res.result_code[self.db_name_02] == ResultCode.SUCCESS)
 
 
 if __name__ == '__main__':

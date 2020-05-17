@@ -641,13 +641,13 @@ class MainRoutine(DBCParams, DBCCore):
                 db_conn.close()
                 if result == WorkerResult.SUCCESS:
                     self.result_code[db] = ResultCode.SUCCESS
-                    self.packet_status[db_name] = PacketStatus.DONE
+                    self.packet_status[db] = PacketStatus.DONE
                 if result == WorkerResult.FAIL:
                     self.result_code[db] = ResultCode.FAIL
-                    self.packet_status[db_name] = PacketStatus.EXCEPTION
+                    self.packet_status[db] = PacketStatus.EXCEPTION
                 if result == WorkerResult.TERMINATE:
                     self.result_code[db] = ResultCode.TERMINATE
-                    self.packet_status[db_name] = PacketStatus.STARTED
+                    self.packet_status[db] = PacketStatus.STARTED
 
         self.logger.log('<===== DBC %s finished' % VERSION, "Info", do_print=True)
         PSCLogger.instance().stop()
