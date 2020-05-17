@@ -482,7 +482,8 @@ class MainRoutine(DBCParams, DBCCore):
         # ================================================================================================
         if self.packet_type == PacketType.DEFAULT or self.args.status:
             self.fill_status(db_name, db_conn)
-        if self.packet_type in (PacketType.READ_ONLY, PacketType.MAINTENANCE, PacketType.NO_COMMIT):
+        if self.packet_type in (PacketType.READ_ONLY, PacketType.MAINTENANCE, PacketType.NO_COMMIT) \
+                and not self.args.status:
             self.packet_status[db_name] = PacketStatus.NEW
         # ================================================================================================
         if self.args.stop:
@@ -493,6 +494,7 @@ class MainRoutine(DBCParams, DBCCore):
         # ================================================================================================
         if self.args.wipe:
             wipe_res = ActionTracker.wipe_packet(db_conn, self.args.packet_name)
+            ActionTracker.set_packet_unlock(db_conn, self.args.packet_name)
             if wipe_res:
                 self.result_code[db_name] = ResultCode.SUCCESS
                 print("=====> Database '%s', packet '%s' successfully wiped!" % (db_name, self.args.packet_name))
@@ -507,7 +509,7 @@ class MainRoutine(DBCParams, DBCCore):
                 (
                     db_name,
                     self.args.packet_name,
-                    "new" if "status" not in self.packet_status else self.packet_status["status"]
+                    "new" if db_name not in self.packet_status else self.packet_status[db_name]
                 )
             )
             self.result_code[db_name] = ResultCode.SUCCESS

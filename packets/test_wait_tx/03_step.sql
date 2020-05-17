@@ -1,0 +1,1 @@
+vacuum full public.test_wai_tx_tbl

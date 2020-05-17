@@ -397,7 +397,7 @@ class TestDBCBlockerTxTimeout(unittest.TestCase):
     packet_name = 'test_blocker_tx'
     db_name = 'test_dbc_01'
 
-    def test_skip_action_cancel(self):
+    def test_blocker_tx(self):
         parser = DBCParams.get_arg_parser()
         args = parser.parse_args([
             '--packet-name=' + self.packet_name,
@@ -411,9 +411,6 @@ class TestDBCBlockerTxTimeout(unittest.TestCase):
         ]), self.conf_file).run()
 
         main = MainRoutine(args, self.conf_file)
-        db_conn = postgresql.open(main.sys_conf.dbs_dict[self.db_name])
-        ActionTracker.set_packet_unlock(db_conn, self.packet_name)
-        db_conn.close()
 
         @threaded
         def emulate_workload():
@@ -431,7 +428,58 @@ class TestDBCBlockerTxTimeout(unittest.TestCase):
         self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
 
 
+class TestDBCWaitTxTimeout(unittest.TestCase):
+    conf_file = 'db_converter_test.conf'
+    packet_name = 'test_wait_tx'
+    db_name = 'test_dbc_01'
+
+    def test_wait_tx(self):
+        parser = DBCParams.get_arg_parser()
+        args = parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name
+        ])
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--wipe'
+        ]), self.conf_file).run()
+
+        main = MainRoutine(args, self.conf_file)
+
+        @threaded
+        def emulate_workload():
+            th_db_conn = postgresql.open(main.sys_conf.dbs_dict[self.db_name])
+            th_db_conn.execute("""
+                do $$
+                begin
+                perform pg_sleep(2);
+                perform * from public.test_wai_tx_tbl;
+                perform pg_sleep(10);
+                end$$
+            """)
+            th_db_conn.close()
+
+        main.append_thread(self.db_name + '_ext', emulate_workload())
+
+        res_2 = main.run()
+
+        self.assertTrue(main.lock_observer_wait_cnt == 1)
+        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
+        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
+
+        res = MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--status'
+        ]), self.conf_file).run()
+
+        self.assertTrue(res.packet_status[self.db_name] == PacketStatus.DONE)
+        self.assertTrue(res.result_code[self.db_name] == ResultCode.SUCCESS)
+
+
 if __name__ == '__main__':
     call_TestDBCPrepareDBs = False
     unittest.main(defaultTest="TestDBCPrepareDBs", exit=False)
-    unittest.main()
+    # unittest.main()
