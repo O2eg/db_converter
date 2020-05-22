@@ -530,6 +530,40 @@ class TestDBCInt4ToInt8(unittest.TestCase):
         self.assertTrue(res.result_code[self.db_name_02] == ResultCode.SUCCESS)
 
 
+class TestDBCAlertAndDBAPackets(unittest.TestCase):
+    runs = []
+    conf_file = 'db_converter_test.conf'
+
+    def setUp(self):
+        packets_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+            "packets"
+        )
+        for f_name in [
+            f for f in os.listdir(packets_dir)
+            if (f.startswith('alert_') or f.startswith('dba_')) and os.path.isdir(os.path.join(packets_dir, f))
+        ]:
+            args = dict(
+                packet_name=f_name,
+                db_name='test_dbc_01',
+                template=None,
+                list=None,
+                status=None,
+                stop=None,
+                wipe=None,
+                seq=False,
+                force=False,
+                unlock=False
+            )
+            self.runs.append(Struct(**args))
+
+    def test_packets(self):
+        for args in self.runs:
+            res = MainRoutine(args, self.conf_file).run()
+            self.assertTrue(res.result_code[args.db_name] == ResultCode.SUCCESS)
+            self.assertTrue(res.packet_status[args.db_name] == PacketStatus.DONE)
+
+
 if __name__ == '__main__':
     call_TestDBCPrepareDBs = False
     unittest.main(defaultTest="TestDBCPrepareDBs", exit=False)
