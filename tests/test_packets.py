@@ -533,6 +533,7 @@ class TestDBCInt4ToInt8(unittest.TestCase):
 class TestDBCAlertAndDBAPackets(unittest.TestCase):
     runs = []
     conf_file = 'db_converter_test.conf'
+    db_name = 'test_dbc_01'
 
     def setUp(self):
         packets_dir = os.path.join(
@@ -545,7 +546,7 @@ class TestDBCAlertAndDBAPackets(unittest.TestCase):
         ]:
             args = dict(
                 packet_name=f_name,
-                db_name='test_dbc_01',
+                db_name=self.db_name,
                 template=None,
                 list=None,
                 status=None,
@@ -558,10 +559,19 @@ class TestDBCAlertAndDBAPackets(unittest.TestCase):
             self.runs.append(Struct(**args))
 
     def test_packets(self):
+        parser = DBCParams.get_arg_parser()
+        args = parser.parse_args(['--packet-name=dba_get_version', '--db-name=' + self.db_name])
+        dbc = MainRoutine(args, self.conf_file)
+        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+        ActionTracker.init_tbls(db_conn)
+
         for args in self.runs:
+            ActionTracker.set_packet_unlock(db_conn, args.packet_name)
             res = MainRoutine(args, self.conf_file).run()
             self.assertTrue(res.result_code[args.db_name] == ResultCode.SUCCESS)
             self.assertTrue(res.packet_status[args.db_name] == PacketStatus.DONE)
+
+        db_conn.close()
 
 
 if __name__ == '__main__':
