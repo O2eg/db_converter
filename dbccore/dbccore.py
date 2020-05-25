@@ -7,7 +7,8 @@ import hashlib
 from enum import Enum
 from functools import partial
 from actiontracker import ActionTracker
-# from db_converter import PacketType
+from sqlparse.sql import *
+import csv
 
 
 class BasicEnum:
@@ -20,6 +21,7 @@ class PacketType(BasicEnum, Enum):
     READ_ONLY = 'read_only'
     NO_COMMIT = 'no_commit'
     MAINTENANCE = 'maintenance'
+    EXPORT_DATA = 'export_data'
 
 
 def parse_query_placeholder(query, gen_i, placeholder):
@@ -269,25 +271,31 @@ class DBCCore:
             meta_data = None
             packet_dir = os.path.join(self.sys_conf.current_dir, 'packets', packet_name)
             for step in os.listdir(packet_dir):
-                current_file = open(os.path.join(packet_dir, step), 'r', encoding="utf8")
-                file_content = current_file.read()
-                packet_full_content.append(file_content)
-                current_file.close()
+                if step.endswith('.sql') or step.endswith('.json'):
+                    current_file = open(os.path.join(packet_dir, step), 'r', encoding="utf8")
+                    file_content = current_file.read()
+                    packet_full_content.append(file_content)
+                    current_file.close()
 
-                if step.endswith('.sql') and step.find('_gen_') == -1:
-                    step_files.append([step, file_content])
-                if step.endswith('.sql') and step.find('_gen_obj') != -1:
-                    gen_obj_files[step] = file_content
-                if step.endswith('.sql') and step.find('_gen_nsp') != -1:
-                    gen_nsp_files[step] = file_content
+                    if step.endswith('.sql') and step.find('_gen_') == -1:
+                        step_files.append([step, file_content])
+                    if step.endswith('.sql') and step.find('_gen_obj') != -1:
+                        gen_obj_files[step] = file_content
+                    if step.endswith('.sql') and step.find('_gen_nsp') != -1:
+                        gen_nsp_files[step] = file_content
 
-                if step == 'meta_data.json':
-                    meta_data = file_content
+                    if step == 'meta_data.json':
+                        meta_data = file_content
 
             if meta_data is None:
                 meta_data = """{"description":"file meta_data.json not found", "type": "default"}"""
 
             meta_data_json = json.loads(meta_data)
+            meta_data_json['packet_dir'] = os.path.join(
+                self.sys_conf.current_dir,
+                "packets",
+                self.args.packet_name
+            )
             # ========================================================================
             # initialize default values
             if "hook" in meta_data_json:
@@ -301,7 +309,7 @@ class DBCCore:
                     for smt in sqlparse.parse(step[1]):
                         for keyword in [v for v in smt.tokens if v.is_keyword]:
                             tags.append(keyword.value)
-                meta_data_json["tags"] = tags
+                meta_data_json["tags"] = list(set(tags))
             # ========================================================================
 
             step_files = sorted(step_files, key=lambda val: val[0])
@@ -803,6 +811,71 @@ class DBCCore:
                 return True
         return False
 
+    def export_data(self, ctx, conn, stms):
+        token_types = []
+        stms_is_export = False
+        csv_files = []
+
+        for stm in stms:
+            if len(sqlparse.parse(stm)) > 0:
+                for token in sqlparse.parse(stm)[0].tokens:
+                    if token.ttype in (sqlparse.tokens.DML, sqlparse.tokens.DDL):
+                        token_types.append((token.ttype, token.normalized))
+
+        # check statement for export data
+        token_types = set(token_types)
+        if len(token_types) == 1:
+            op_type = next(iter(token_types))
+            if op_type[0] == sqlparse.tokens.DML and op_type[1] == 'SELECT':
+                self.logger.log("%s: export data started..." % (ctx.info()), "Info", do_print=True)
+                with conn.xact(isolation='REPEATABLE READ') as xact:
+                    conn.execute("SET TRANSACTION READ ONLY")
+                    for stm in stms:
+                        cursor = conn.prepare(stm).declare()
+                        resultset = cursor.read(10)
+                        column_names = []
+                        if len(list(resultset[0].column_names)) != len(list(resultset[0])):
+                            column_names = ['?column?'] * len(list(resultset[0]))
+                        else:
+                            column_names = list(resultset[0].column_names)
+
+                        try:
+                            output_file_name = 'export_%s_%s.csv' % (
+                                hashlib.md5(stm.encode()).hexdigest()[0:6],
+                                ctx.db_name
+                            )
+                            output_file_name = os.path.join(ctx.meta_data_json['packet_dir'], output_file_name)
+                            csv_files.append(output_file_name)
+                            with open(output_file_name, 'w', newline='') as csvfile:
+                                writer = csv.writer(csvfile, delimiter='	', quoting=csv.QUOTE_ALL)
+                                writer.writerow(column_names)
+                                for row in resultset:
+                                    writer.writerow([str(v) for v in row])
+
+                                while len(resultset) > 0:
+                                    resultset = cursor.read(10)
+                                    for row in resultset:
+                                        writer.writerow([str(v) for v in row])
+                            stms_is_export = True
+                        except:
+                            exception_descr = exception_helper(self.sys_conf.detailed_traceback)
+                            self.logger.log(
+                                'Exception in "export_data" %s: \n%s' % (ctx.info(), exception_descr),
+                                "Error",
+                                do_print=True
+                            )
+                        finally:
+                            cursor.close()
+                self.logger.log("%s: export data finished!" % (ctx.info()), "Info", do_print=True)
+        # if statement(s) is not SELECT or mixed: INSERT, ALTER, etc... return False
+
+        if stms_is_export:
+            if 'export_options' in ctx.meta_data_json and 'use_zip' in ctx.meta_data_json['export_options']:
+                zip_file_name = os.path.join(ctx.meta_data_json['packet_dir'], 'export.zip')
+                # todo
+
+        return stms_is_export
+
     def execute_q(self, ctx, conn, query, isolation_level="READ COMMITTED", read_only=False):
         results = []
 
@@ -823,39 +896,43 @@ class DBCCore:
                 self.logger.log("%s Executing as maintenance query:\n%s" % (ctx.info(), query), "Info", do_print=True)
                 conn.execute(query)
             else:
-                with conn.xact(isolation=isolation_level) as xact:
-                    # psc.postgresql.exceptions.ReadOnlyTransactionError: cannot execute ... in a read-only transaction
-                    if read_only:
-                        conn.execute("SET TRANSACTION READ ONLY")
+                stms = sqlparse.split(query)
+                stms_is_export = False
+                if ctx.meta_data_json['type'] == PacketType.EXPORT_DATA.value:
+                    stms_is_export = self.export_data(ctx, conn, stms)
+                if not stms_is_export or not(ctx.meta_data_json['type'] == PacketType.EXPORT_DATA.value):
+                    with conn.xact(isolation=isolation_level) as xact:
+                        # ReadOnlyTransactionError: cannot execute ... in a read-only transaction
+                        if read_only:
+                            conn.execute("SET TRANSACTION READ ONLY")
 
-                    stms = sqlparse.split(query)
-                    for stm in stms:
-                        prepared = conn.prepare(stm)
-                        res = prepared()
-                        results.append(res)
-                        # ===============================================================================
-                        # output to stdout
-                        if isinstance(res, tuple):
-                            self.logger.log('%s' % str(res), "Info", do_print=True)
-                        if isinstance(res, list) and len(res) > 0 and res[0] not in self.sys_conf.plsql_raises:
-                            table = []
-                            if len(list(res[0].column_names)) != len(list(res[0])):
-                                table.append(['?column?'] * len(list(res[0])))
-                            else:
-                                table.append(list(res[0].column_names))
-                            table_content = []
+                        for stm in stms:
+                            prepared = conn.prepare(stm)
+                            res = prepared()
+                            results.append(res)
+                            # ===============================================================================
+                            # output to stdout
+                            if isinstance(res, tuple):
+                                self.logger.log('%s' % str(res), "Info", do_print=True)
+                            if isinstance(res, list) and len(res) > 0 and res[0] not in self.sys_conf.plsql_raises:
+                                table = []
+                                if len(list(res[0].column_names)) != len(list(res[0])):
+                                    table.append(['?column?'] * len(list(res[0])))
+                                else:
+                                    table.append(list(res[0].column_names))
+                                table_content = []
 
-                            for row in res:
-                                table_content.append([str(v) for v in row])
+                                for row in res:
+                                    table_content.append([str(v) for v in row])
 
-                            table.extend(table_content)
-                            table_text = print_table(table)
-                            self.logger.log('\n%s' % str(table_text), "Info", do_print=True)
-                        # ===============================================================================
+                                table.extend(table_content)
+                                table_text = print_table(table)
+                                self.logger.log('\n%s' % str(table_text), "Info", do_print=True)
+                            # ===============================================================================
 
-                    if ctx.meta_data_json["type"] == PacketType.NO_COMMIT.value:
-                        self.logger.log("%s: Performing rollback..." % (ctx.info()), "Info")
-                        xact.rollback()
+                            if ctx.meta_data_json["type"] == PacketType.NO_COMMIT.value:
+                                self.logger.log("%s: Performing rollback..." % (ctx.info()), "Info")
+                                xact.rollback()
         except postgresql.exceptions.OperationError:
             self.logger.log("%s: Transaction aborted" % (ctx.info()), "Info", do_print=True)
 
@@ -949,7 +1026,12 @@ class DBCCore:
                         step_hash = hashlib.md5(gen_query.encode()).hexdigest()
                         if step_hash in steps_hashes:
                             continue
-                        if enable_at and ActionTracker.is_action_exists(db_local, ctx.packet_name, ctx.step[0], step_hash):
+                        if enable_at and ActionTracker.is_action_exists(
+                                db_local,
+                                ctx.packet_name,
+                                ctx.step[0],
+                                step_hash
+                        ):
                             steps_hashes[step_hash] = ctx.step[0]
                             self.logger.log(
                                 "%s: already executed with hash %s" % (ctx.info(), step_hash),
@@ -960,11 +1042,13 @@ class DBCCore:
                             if self.sys_conf.log_sql == 1:
                                 self.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
                             if self.sys_conf.execute_sql:
-                                if enable_at: ActionTracker.begin_action(
-                                    db_local, ctx.packet_name, ctx.packet_hash, ctx.step[0], ctx.meta_data
-                                )
+                                if enable_at:
+                                    ActionTracker.begin_action(
+                                        db_local, ctx.packet_name, ctx.packet_hash, ctx.step[0], ctx.meta_data
+                                    )
                                 self.execute_q(ctx, db_local, gen_query)
-                                if enable_at: ActionTracker.apply_action(db_local, ctx.packet_name, ctx.step[0], step_hash)
+                                if enable_at:
+                                    ActionTracker.apply_action(db_local, ctx.packet_name, ctx.step[0], step_hash)
                                 steps_hashes[step_hash] = ctx.step[0]
                                 self.logger.log("%s: action finished" % (ctx.info()), "Info")
 

@@ -1,0 +1,9 @@
+{
+	"responsible": "no name",
+	"description": "export data test",
+	"type": "export_data",
+	"export_options": {
+		"use_zip": "yes",
+		"password": "random"
+	}
+}

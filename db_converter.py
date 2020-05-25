@@ -13,7 +13,7 @@ from dbccore import *
 import shutil
 from enum import Enum
 
-VERSION = 2.6
+VERSION = 2.7
 
 
 class SysConf:
@@ -371,6 +371,8 @@ class MainRoutine(DBCParams, DBCCore):
                         self.packet_type = PacketType.NO_COMMIT
                     if meta_data_json["type"] == 'maintenance':
                         self.packet_type = PacketType.MAINTENANCE
+                    if meta_data_json["type"] == 'export_data':
+                        self.packet_type = PacketType.EXPORT_DATA
                 else:
                     self.packet_type = PacketType.DEFAULT
             except json.decoder.JSONDecodeError:
@@ -482,8 +484,12 @@ class MainRoutine(DBCParams, DBCCore):
         # ================================================================================================
         if self.packet_type == PacketType.DEFAULT or self.args.status:
             self.fill_status(db_name, db_conn)
-        if self.packet_type in (PacketType.READ_ONLY, PacketType.MAINTENANCE, PacketType.NO_COMMIT) \
-                and not self.args.status:
+        if self.packet_type in (
+                PacketType.READ_ONLY,
+                PacketType.MAINTENANCE,
+                PacketType.NO_COMMIT,
+                PacketType.EXPORT_DATA
+        ) and not self.args.status:
             self.packet_status[db_name] = PacketStatus.NEW
         # ================================================================================================
         if self.args.stop:
@@ -492,7 +498,12 @@ class MainRoutine(DBCParams, DBCCore):
             )
             self.result_code[db_name] = ResultCode.SUCCESS if term_conn_res else ResultCode.NOTHING_TODO
         # ================================================================================================
-        if self.args.wipe:
+        if self.args.wipe and self.packet_type not in (
+                PacketType.READ_ONLY,
+                PacketType.MAINTENANCE,
+                PacketType.NO_COMMIT,
+                PacketType.EXPORT_DATA
+        ):
             wipe_res = ActionTracker.wipe_packet(db_conn, self.args.packet_name)
             ActionTracker.set_packet_unlock(db_conn, self.args.packet_name)
             if wipe_res:
@@ -520,7 +531,7 @@ class MainRoutine(DBCParams, DBCCore):
                 print(self.db_packet_status["exception_descr"])
                 print("=".join(['=' * 100]))
         # ================================================================================================
-        if self.command_type == CommandType.RUN:
+        if not self.args.unlock and self.command_type == CommandType.RUN:
             if self.packet_status[db_name] != PacketStatus.DONE:
                 # ===========================================
                 if ActionTracker.is_packet_locked(db_conn, self.args.packet_name):

@@ -31,7 +31,8 @@ class TestDBCPackets(unittest.TestCase):
                 'test_prepare_dbs',
                 'test_blocker_tx',
                 'test_wait_tx',
-                'test_int4_to_int8'
+                'test_int4_to_int8',
+                'test_export_data'
             ]
         ]:
             args = dict(
@@ -574,7 +575,30 @@ class TestDBCAlertAndDBAPackets(unittest.TestCase):
         db_conn.close()
 
 
+class TestDBCExportData(unittest.TestCase):
+    conf_file = 'db_converter_test.conf'
+    packet_name = 'test_export_data'
+    db_name = 'test_dbc_01'
+
+    def test_export_data(self):
+        parser = DBCParams.get_arg_parser()
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--unlock'
+        ]), self.conf_file).run()
+
+        res = MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name
+        ]), self.conf_file).run()
+
+        self.assertTrue(res.packet_status[self.db_name] == PacketStatus.DONE)
+        self.assertTrue(res.result_code[self.db_name] == ResultCode.SUCCESS)
+
+
 if __name__ == '__main__':
     call_TestDBCPrepareDBs = False
     unittest.main(defaultTest="TestDBCPrepareDBs", exit=False)
-    unittest.main()
+    #unittest.main()
