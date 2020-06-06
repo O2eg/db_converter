@@ -9,6 +9,9 @@ from functools import partial
 from actiontracker import ActionTracker
 from sqlparse.sql import *
 import csv
+import pyzipper
+import string
+import random
 
 
 class BasicEnum:
@@ -796,6 +799,15 @@ class DBCCore:
                 do_print=True
             )
 
+    @staticmethod
+    def generate_password(length=12):
+        printable = f'{string.ascii_letters}{string.digits}'
+        printable = list(printable)
+        random.shuffle(printable)
+        random_password = random.choices(printable, k=length)
+        random_password = ''.join(random_password)
+        return random_password
+
     def is_maint_query(self, query):
         is_maint = True
         for op in self.sys_conf.maint_ops:
@@ -840,8 +852,9 @@ class DBCCore:
                             column_names = list(resultset[0].column_names)
 
                         try:
-                            output_file_name = 'export_%s_%s.csv' % (
+                            output_file_name = 'export_%s_%s_%s.csv' % (
                                 hashlib.md5(stm.encode()).hexdigest()[0:6],
+                                time.strftime("%Y%m%d-%H%M%S"),
                                 ctx.db_name
                             )
                             output_file_name = os.path.join(ctx.meta_data_json['packet_dir'], output_file_name)
@@ -867,13 +880,55 @@ class DBCCore:
                         finally:
                             cursor.close()
                 self.logger.log("%s: export data finished!" % (ctx.info()), "Info", do_print=True)
-        # if statement(s) is not SELECT or mixed: INSERT, ALTER, etc... return False
 
         if stms_is_export:
             if 'export_options' in ctx.meta_data_json and 'use_zip' in ctx.meta_data_json['export_options']:
-                zip_file_name = os.path.join(ctx.meta_data_json['packet_dir'], 'export.zip')
-                # todo
+                secret_password = None
+                zip_file_name = None
+                try:
+                    if 'password' in ctx.meta_data_json['export_options'] and \
+                            ctx.meta_data_json['export_options']['password'] == 'random':
+                        secret_password = self.generate_password()
+                        zip_file_name = os.path.join(
+                            ctx.meta_data_json['packet_dir'],
+                            'export_%s_%s_%s.zip' % (
+                                secret_password, time.strftime("%Y%m%d-%H%M%S"), ctx.db_name
+                            )
+                        )
+                    elif 'password' in ctx.meta_data_json['export_options']:
+                        secret_password = ctx.meta_data_json['export_options']['password']
+                        zip_file_name = os.path.join(
+                            ctx.meta_data_json['packet_dir'],
+                            'export_%s_%s.zip' % (time.strftime("%Y%m%d-%H%M%S"), ctx.db_name)
+                        )
+                    else:
+                        zip_file_name = os.path.join(
+                            ctx.meta_data_json['packet_dir'],
+                            'export_%s_%s.zip' % (time.strftime("%Y%m%d-%H%M%S"), ctx.db_name)
+                        )
 
+                    if secret_password is not None:
+                        with pyzipper.AESZipFile(zip_file_name, 'w',
+                                                 compression=pyzipper.ZIP_LZMA,
+                                                 encryption=pyzipper.WZ_AES) as zf:
+                            zf.setpassword(secret_password.encode('utf-8'))
+                            for csv_file in csv_files:
+                                zf.write(csv_file)
+                    else:
+                        with pyzipper.ZipFile(zip_file_name, 'w', compression=pyzipper.ZIP_LZMA) as zf:
+                            for csv_file in csv_files:
+                                zf.write(csv_file)
+
+                    for csv_file in csv_files:
+                        os.remove(csv_file)
+                except:
+                    exception_descr = exception_helper(self.sys_conf.detailed_traceback)
+                    self.logger.log(
+                        'Exception in "export_data" %s: \n%s' % (ctx.info(), exception_descr),
+                        "Error",
+                        do_print=True
+                    )
+        # if statement(s) is not SELECT or mixed: INSERT, ALTER, etc... return False
         return stms_is_export
 
     def execute_q(self, ctx, conn, query, isolation_level="READ COMMITTED", read_only=False):
