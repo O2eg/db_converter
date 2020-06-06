@@ -601,4 +601,4 @@ class TestDBCExportData(unittest.TestCase):
 if __name__ == '__main__':
     call_TestDBCPrepareDBs = False
     unittest.main(defaultTest="TestDBCPrepareDBs", exit=False)
-    #unittest.main()
+    unittest.main()
