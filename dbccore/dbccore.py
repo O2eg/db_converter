@@ -247,6 +247,8 @@ class DBCCore:
             ) as e:
                 if self.is_terminate:
                     self.logger.log('Thread %s stopped!' % thread_name, "Error", do_print=True)
+                    if db_conn is not None:
+                        db_conn.close()
                     return
                 do_work = True
                 self.logger.log(
@@ -407,6 +409,7 @@ class DBCCore:
                             self.append_pid(db_name, current_pid)
                     except:
                         self.logger.log("%s: Connection to DB is broken" % thread_name, "Error")
+                        db_local.close()
                         db_local = None     # needs reconnect
 
                 # ======================================================
@@ -511,6 +514,9 @@ class DBCCore:
                       (thread_name, str(current_pid), packet_name, exception_descr)
                 self.logger.log(msg, "Error", do_print=True)
 
+        if db_local is not None:
+            db_local.close()
+
         self.lock.acquire()
         if current_pid is not None and current_pid in self.get_pids(db_name):
             self.remove_pid(db_name, current_pid)
@@ -576,6 +582,7 @@ class DBCCore:
                             self.append_pid(db_name, current_pid)
                     except:
                         self.logger.log("%s: Connection to DB is broken" % thread_name, "Error")
+                        db_local.close()
                         db_local = None     # needs reconnect
 
                 # ======================================================
@@ -594,6 +601,7 @@ class DBCCore:
                     self.prepare_session(db_local, meta_data_json)
 
                     current_pid = get_scalar(db_local, "SELECT pg_backend_pid()")
+                    self.db_conns[current_pid] = db_local
                     self.append_pid(db_name, current_pid)
                     self.logger.log(
                         "Thread '%s': connected to '%s' database with pid %d" %
@@ -717,6 +725,9 @@ class DBCCore:
 
         if not work_breaked and self.errors_count > 0:
             ActionTracker.set_packet_status(db_local, packet_name, 'exception')
+
+        if db_local is not None:
+            db_local.close()
 
         self.lock.acquire()
         if current_pid is not None and current_pid in self.get_pids(db_name):
