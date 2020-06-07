@@ -860,7 +860,7 @@ class DBCCore:
                     conn.execute("SET TRANSACTION READ ONLY")
                     for stm in stms:
                         cursor = conn.prepare(stm).declare()
-                        resultset = cursor.read(10)
+                        resultset = cursor.read(10000)
                         column_names = []
                         if len(list(resultset[0].column_names)) != len(list(resultset[0])):
                             column_names = ['?column?'] * len(list(resultset[0]))
@@ -882,7 +882,7 @@ class DBCCore:
                                     writer.writerow([str(v) for v in row])
 
                                 while len(resultset) > 0:
-                                    resultset = cursor.read(10)
+                                    resultset = cursor.read(10000)
                                     for row in resultset:
                                         writer.writerow([str(v) for v in row])
                             stms_is_export = True
