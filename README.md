@@ -7,11 +7,16 @@ nohup python36 db_converter.py \
 	--packet-name=my_packet \
 	--db-name=ALL
     > /dev/null 2>&1 &
+
+# run all tests
+python36 tests/test_packets.py -v
+# run specific test
+python36 tests/test_packets.py -v TestDBCLock
 ```
 
 # Dependencies and installation
 
-Python 3.x with modules: sqlparse, requests
+Python 3.x with modules: sqlparse, requests, pyzipper
 
 ```
 yum install -y python38
@@ -20,6 +25,7 @@ curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 python3.8 get-pip.py
 pip3.8 install sqlparse
 pip3.8 install requests
+pip3.8 install pyzipper
 ```
 
 
@@ -35,6 +41,7 @@ Tasks that can be solved using `db_converter`:
 * System and application notifications via `mattermost` (or any other messenger)
 * Database maintenance (deleting old data, creating triggers on partitions, etc.)
 * Parallel processing of several databases
+* Export data in `csv` format into encrypted archive
 
 ## Terminology
 

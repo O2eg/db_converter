@@ -5,6 +5,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from db_converter import *
 import psc.postgresql as postgresql
 from actiontracker import ActionTracker
+import pyzipper
 
 
 class Struct:
@@ -589,13 +590,41 @@ class TestDBCExportData(unittest.TestCase):
             '--unlock'
         ]), self.conf_file).run()
 
-        res = MainRoutine(parser.parse_args([
+        dbc = MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
             '--db-name=' + self.db_name
-        ]), self.conf_file).run()
+        ]), self.conf_file)
+        res = dbc.run()
 
         self.assertTrue(res.packet_status[self.db_name] == PacketStatus.DONE)
         self.assertTrue(res.result_code[self.db_name] == ResultCode.SUCCESS)
+
+        self.assertTrue(len(dbc.export_results.csv_files) > 0)
+        for csv_file in dbc.export_results.csv_files:
+            self.assertFalse(os.path.exists(csv_file))
+
+        with pyzipper.AESZipFile(dbc.export_results.zip_file) as zip:
+            password = os.path.basename(dbc.export_results.zip_file).split('_')[1]
+            zip.pwd = password.encode('utf-8')
+            for f in zip.infolist():
+                current_file = os.path.basename(f.filename)
+
+                output_file_name = next(
+                    fv for fv in dbc.export_results.csv_files if os.path.basename(fv) == current_file
+                )
+
+                output_file = open(output_file_name, 'w+b')
+                output_file.write(zip.read(f))
+                output_file.close()
+
+        for csv_file in dbc.export_results.csv_files:
+            self.assertTrue(os.path.exists(csv_file))
+
+        for csv_file in dbc.export_results.csv_files:
+            os.remove(csv_file)
+
+        os.remove(dbc.export_results.zip_file)
+        del dbc.export_results.csv_files[:]
 
 
 if __name__ == '__main__':

@@ -88,6 +88,11 @@ class WorkerResult(BasicEnum, Enum):
     TERMINATE = 'terminate'
 
 
+class ExportResults:
+    csv_files = []
+    zip_file = None
+
+
 class DBCCore:
     lock = threading.Lock()
     workers_db_pid = {}     # key is "db_name", value is array of pids
@@ -97,6 +102,7 @@ class DBCCore:
     db_conns = {}
     lock_observer_blocker_cnt = 0
     lock_observer_wait_cnt = 0
+    export_results = ExportResults()
 
     def get_pids(self, db_name):
         try:
@@ -826,7 +832,6 @@ class DBCCore:
     def export_data(self, ctx, conn, stms):
         token_types = []
         stms_is_export = False
-        csv_files = []
 
         for stm in stms:
             if len(sqlparse.parse(stm)) > 0:
@@ -858,7 +863,7 @@ class DBCCore:
                                 ctx.db_name
                             )
                             output_file_name = os.path.join(ctx.meta_data_json['packet_dir'], output_file_name)
-                            csv_files.append(output_file_name)
+                            self.export_results.csv_files.append(output_file_name)
                             with open(output_file_name, 'w', newline='') as csvfile:
                                 writer = csv.writer(csvfile, delimiter='	', quoting=csv.QUOTE_ALL)
                                 writer.writerow(column_names)
@@ -884,12 +889,11 @@ class DBCCore:
         if stms_is_export:
             if 'export_options' in ctx.meta_data_json and 'use_zip' in ctx.meta_data_json['export_options']:
                 secret_password = None
-                zip_file_name = None
                 try:
                     if 'password' in ctx.meta_data_json['export_options'] and \
                             ctx.meta_data_json['export_options']['password'] == 'random':
                         secret_password = self.generate_password()
-                        zip_file_name = os.path.join(
+                        self.export_results.zip_file = os.path.join(
                             ctx.meta_data_json['packet_dir'],
                             'export_%s_%s_%s.zip' % (
                                 secret_password, time.strftime("%Y%m%d-%H%M%S"), ctx.db_name
@@ -897,29 +901,29 @@ class DBCCore:
                         )
                     elif 'password' in ctx.meta_data_json['export_options']:
                         secret_password = ctx.meta_data_json['export_options']['password']
-                        zip_file_name = os.path.join(
+                        self.export_results.zip_file = os.path.join(
                             ctx.meta_data_json['packet_dir'],
                             'export_%s_%s.zip' % (time.strftime("%Y%m%d-%H%M%S"), ctx.db_name)
                         )
                     else:
-                        zip_file_name = os.path.join(
+                        self.export_results.zip_file = os.path.join(
                             ctx.meta_data_json['packet_dir'],
                             'export_%s_%s.zip' % (time.strftime("%Y%m%d-%H%M%S"), ctx.db_name)
                         )
 
                     if secret_password is not None:
-                        with pyzipper.AESZipFile(zip_file_name, 'w',
+                        with pyzipper.AESZipFile(self.export_results.zip_file, 'w',
                                                  compression=pyzipper.ZIP_LZMA,
                                                  encryption=pyzipper.WZ_AES) as zf:
                             zf.setpassword(secret_password.encode('utf-8'))
-                            for csv_file in csv_files:
+                            for csv_file in self.export_results.csv_files:
                                 zf.write(csv_file)
                     else:
-                        with pyzipper.ZipFile(zip_file_name, 'w', compression=pyzipper.ZIP_LZMA) as zf:
-                            for csv_file in csv_files:
+                        with pyzipper.ZipFile(self.export_results.zip_file, 'w', compression=pyzipper.ZIP_LZMA) as zf:
+                            for csv_file in self.export_results.csv_files:
                                 zf.write(csv_file)
 
-                    for csv_file in csv_files:
+                    for csv_file in self.export_results.csv_files:
                         os.remove(csv_file)
                 except:
                     exception_descr = exception_helper(self.sys_conf.detailed_traceback)
@@ -928,6 +932,7 @@ class DBCCore:
                         "Error",
                         do_print=True
                     )
+
         # if statement(s) is not SELECT or mixed: INSERT, ALTER, etc... return False
         return stms_is_export
 
