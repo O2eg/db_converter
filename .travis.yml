@@ -1,11 +1,19 @@
 language: python
 python:
   - "3.8"
-# command to install dependencies
+dist: xenial
+addons:
+  postgresql: "12"
+  apt:
+    packages:
+    - postgresql-12
+    - postgresql-client-12
+env:
+  global:
+  - PGPORT=5432
 install:
   - pip install sqlparse
   - pip install requests
   - pip install pyzipper
-# command to run tests
 script:
   - tests/test_packets.py
