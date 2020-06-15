@@ -1,6 +1,6 @@
 # db_converter
 
-https://travis-ci.com/masterlee998/db_converter.svg?branch=master
+[![Build Status](https://travis-ci.com/masterlee998/db_converter.svg?branch=master)](https://travis-ci.com/masterlee998/db_converter)
 
 # How to run:
 
