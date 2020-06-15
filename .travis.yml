@@ -1,24 +1,47 @@
 language: python
-python:
-  - "3.8"
-dist: xenial
-install:
-  - pip install sqlparse
-  - pip install requests
-  - pip install pyzipper
-before_script:
-  - export PATH="/usr/lib/postgresql/12/bin:$PATH"
-  - sudo apt-get update
-  - sudo apt-get install -y net-tools
-  - sudo apt-get --yes remove postgresql\*
-  - sudo apt-get install -y postgresql-12 postgresql-client-12
-  - sudo sed -ie 's/^port.*/port = 5432/' /etc/postgresql/12/main/postgresql.conf
-  - sudo sed -ie 's/^max_connections.*/max_connections = 150/' /etc/postgresql/12/main/postgresql.conf
-  - sudo sed -i  '/listen_addresses/s/^#//g' /etc/postgresql/12/main/postgresql.conf
-  - sudo sed -ie "s/^listen_addresses.*/listen_addresses = '*'/" /etc/postgresql/12/main/postgresql.conf
-  - sudo sed -i -e '/local.*peer/s/postgres/all/' -e 's/peer\|md5/trust/g' /etc/postgresql/12/main/pg_hba.conf
-  - sudo pg_ctlcluster 12 main restart
-  - psql -c "ALTER USER postgres WITH PASSWORD 'postgres87291';" -U postgres -h 127.0.0.1
-  - psql -c "select version();" -U postgres -h 127.0.0.1
-script:
-  - python3.8 tests/test_packets.py
+jobs:
+  include:
+    - os: linux
+      dist: xenial
+      python: "3.6"
+      install:
+        - pip install sqlparse
+        - pip install requests
+        - pip install pyzipper
+      before_script:
+        - export PATH="/usr/lib/postgresql/10/bin:$PATH"
+        - sudo apt-get update
+        - sudo apt-get --yes remove postgresql\*
+        - sudo apt-get install -y postgresql-10 postgresql-client-10
+        - sudo rm -rf /etc/postgresql/10/main/*
+        - sudo su postgres -c "/usr/lib/postgresql/10/bin/initdb --pgdata /etc/postgresql/10/main"
+        - sudo sed -ie 's/^port.*/port = 5432/' /etc/postgresql/10/main/postgresql.conf
+        - sudo sed -i  '/listen_addresses/s/^#//g' /etc/postgresql/10/main/postgresql.conf
+        - sudo sed -ie "s/^listen_addresses.*/listen_addresses = '127.0.0.1'/" /etc/postgresql/10/main/postgresql.conf
+        - sudo sed -i -e '/local.*peer/s/postgres/all/' -e 's/peer\|md5/trust/g' /etc/postgresql/10/main/pg_hba.conf
+        - sudo su postgres -c "/usr/lib/postgresql/10/bin/pg_ctl -D /etc/postgresql/10/main start"
+        - psql -c "ALTER USER postgres WITH PASSWORD 'postgres87291';" -U postgres -h 127.0.0.1
+        - psql -c "select version();" -U postgres -h 127.0.0.1
+      script:
+        - python3.6 tests/test_packets.py
+    - os: linux
+      dist: bionic
+      python: "3.8"
+      install:
+        - pip install sqlparse
+        - pip install requests
+        - pip install pyzipper
+      before_script:
+        - export PATH="/usr/lib/postgresql/12/bin:$PATH"
+        - sudo apt-get update
+        - sudo apt-get --yes remove postgresql\*
+        - sudo apt-get install -y postgresql-12 postgresql-client-12
+        - sudo sed -ie 's/^port.*/port = 5432/' /etc/postgresql/12/main/postgresql.conf
+        - sudo sed -i  '/listen_addresses/s/^#//g' /etc/postgresql/12/main/postgresql.conf
+        - sudo sed -ie "s/^listen_addresses.*/listen_addresses = '127.0.0.1'/" /etc/postgresql/12/main/postgresql.conf
+        - sudo sed -i -e '/local.*peer/s/postgres/all/' -e 's/peer\|md5/trust/g' /etc/postgresql/12/main/pg_hba.conf
+        - sudo pg_ctlcluster 12 main restart
+        - psql -c "ALTER USER postgres WITH PASSWORD 'postgres87291';" -U postgres -h 127.0.0.1
+        - psql -c "select version();" -U postgres -h 127.0.0.1
+      script:
+        - python3.8 tests/test_packets.py
