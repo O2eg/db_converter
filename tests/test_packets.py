@@ -380,8 +380,8 @@ class TestDBCPrepareDBs(unittest.TestCase):
                 AND datname in ('test_dbc_01', 'test_dbc_02')
         """)
 
-        db_conn.execute("""DROP DATABASE test_dbc_01""")
-        db_conn.execute("""DROP DATABASE test_dbc_02""")
+        db_conn.execute("""DROP DATABASE IF EXISTS test_dbc_01""")
+        db_conn.execute("""DROP DATABASE IF EXISTS test_dbc_02""")
         db_conn.close()
 
         MainRoutine(args, self.conf_file).run()
