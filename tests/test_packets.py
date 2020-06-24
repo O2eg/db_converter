@@ -627,6 +627,31 @@ class TestDBCExportData(unittest.TestCase):
         del dbc.export_results.csv_files[:]
 
 
+class TestDBCPyStep(unittest.TestCase):
+    conf_file = 'db_converter_test.conf'
+    packet_name = 'test_py_step'
+    db_name = 'test_dbc_01'
+
+    def test_blocker_tx(self):
+        parser = DBCParams.get_arg_parser()
+        args = parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name
+        ])
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--wipe'
+        ]), self.conf_file).run()
+
+        main = MainRoutine(args, self.conf_file)
+        res_2 = main.run()
+
+        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
+        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
+
+
 if __name__ == '__main__':
     call_TestDBCPrepareDBs = False
     unittest.main(defaultTest="TestDBCPrepareDBs", exit=False)

@@ -282,13 +282,13 @@ class DBCCore:
             meta_data = None
             packet_dir = os.path.join(self.sys_conf.current_dir, 'packets', packet_name)
             for step in os.listdir(packet_dir):
-                if step.endswith('.sql') or step.endswith('.json'):
+                if step.endswith('.sql') or step.endswith('.py') or step.endswith('.json'):
                     current_file = open(os.path.join(packet_dir, step), 'r', encoding="utf8")
                     file_content = current_file.read()
                     packet_full_content.append(file_content)
                     current_file.close()
 
-                    if step.endswith('.sql') and step.find('_gen_') == -1:
+                    if (step.endswith('.sql') or step.endswith('.py')) and step.find('_gen_') == -1:
                         step_files.append([step, file_content])
                     if step.endswith('.sql') and step.find('_gen_obj') != -1:
                         gen_obj_files[step] = file_content
@@ -1181,7 +1181,19 @@ class DBCCore:
                                 if enable_at: ActionTracker.begin_action(
                                     db_local, ctx.packet_name, ctx.packet_hash, ctx.step[0], ctx.meta_data
                                 )
-                                self.execute_q(ctx, db_local, ctx.step[1])
+                                if ctx.step[0].find(".py") > -1:
+                                    # python step custom execution
+                                    try:
+                                        exec(ctx.step[1])
+                                    except:
+                                        exception_descr = exception_helper(self.sys_conf.detailed_traceback)
+                                        self.logger.log(
+                                            'Exception in "execute_step exec" %s: \n%s' % (ctx.info(), exception_descr),
+                                            "Error",
+                                            do_print=True
+                                        )
+                                else:
+                                    self.execute_q(ctx, db_local, ctx.step[1])
                                 if enable_at:
                                     ActionTracker.apply_action(db_local, ctx.packet_name, ctx.step[0], step_hash)
                                 steps_hashes[step_hash] = ctx.step[0]
