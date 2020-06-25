@@ -651,6 +651,17 @@ class TestDBCPyStep(unittest.TestCase):
         self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
         self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
 
+        db_local = postgresql.open(main.sys_conf.dbs_dict[self.db_name])
+        content = get_resultset(db_local, """
+            SELECT content
+            FROM public.test_tbl_import
+            WHERE fname in ('data_a.txt', 'data_b.txt')
+            ORDER BY id
+        """)
+        self.assertTrue(content[0][0] == 'Some raw data A')
+        self.assertTrue(content[1][0] == 'Some raw data B')
+        db_local.close()
+
 
 if __name__ == '__main__':
     call_TestDBCPrepareDBs = False

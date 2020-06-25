@@ -1181,17 +1181,9 @@ class DBCCore:
                                 if enable_at: ActionTracker.begin_action(
                                     db_local, ctx.packet_name, ctx.packet_hash, ctx.step[0], ctx.meta_data
                                 )
-                                if ctx.step[0].find(".py") > -1:
+                                if ctx.step[0].endswith(".py"):
                                     # python step custom execution
-                                    try:
-                                        exec(ctx.step[1])
-                                    except:
-                                        exception_descr = exception_helper(self.sys_conf.detailed_traceback)
-                                        self.logger.log(
-                                            'Exception in "execute_step exec" %s: \n%s' % (ctx.info(), exception_descr),
-                                            "Error",
-                                            do_print=True
-                                        )
+                                    exec(ctx.step[1])
                                 else:
                                     self.execute_q(ctx, db_local, ctx.step[1])
                                 if enable_at:

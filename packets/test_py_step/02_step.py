@@ -5,12 +5,11 @@ data_dir = os.path.join(
 	"data"
 )
 
-for file in os.listdir(data_dir):
-	current_file = open(os.path.join(data_dir, file), 'r', encoding="utf8")
-	file_content = current_file.read()
-	print(file_content)
-	current_file.close()
+p_insert = db_local.prepare("INSERT INTO public.test_tbl_import(dir, fname, content) VALUES ($1, $2, $3)")
 
-self.execute_q(ctx, db_local, """INSERT INTO public.test_tbl_import(fld_1)
-    SELECT 'text_' || T.v from(SELECT generate_series(1, 20) as v) T;""")
-self.execute_q(ctx, db_local, 'select version()')
+with db_local.xact():
+	for file in os.listdir(data_dir):
+		current_file = open(os.path.join(data_dir, file), 'r', encoding="utf8")
+		file_content = current_file.read()
+		p_insert(data_dir, file, file_content)
+		current_file.close()
