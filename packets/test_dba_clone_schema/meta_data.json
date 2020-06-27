@@ -1,0 +1,5 @@
+{
+	"responsible": "Oleg Gurov",
+	"description": "Test of clone_schema function",
+	"client_min_messages": "INFO"
+}

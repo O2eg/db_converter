@@ -663,6 +663,44 @@ class TestDBCPyStep(unittest.TestCase):
         db_local.close()
 
 
+class TestDBCCloneSchema(unittest.TestCase):
+    conf_file = 'db_converter_test.conf'
+    test_packet_name = 'test_dba_clone_schema'
+    dba_packet_name = 'dba_clone_schema'
+    db_name = 'test_dbc_01'
+
+    def test_blocker_tx(self):
+        parser = DBCParams.get_arg_parser()
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.test_packet_name,
+            '--db-name=' + self.db_name,
+            '--wipe'
+        ]), self.conf_file).run()
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.dba_packet_name,
+            '--db-name=' + self.db_name,
+            '--wipe'
+        ]), self.conf_file).run()
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.dba_packet_name,
+            '--db-name=' + self.db_name
+        ]), self.conf_file).run()
+
+        args = parser.parse_args([
+            '--packet-name=' + self.test_packet_name,
+            '--db-name=' + self.db_name
+        ])
+
+        main = MainRoutine(args, self.conf_file)
+        res_2 = main.run()
+
+        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
+        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
+
+
 if __name__ == '__main__':
     call_TestDBCPrepareDBs = False
     unittest.main(defaultTest="TestDBCPrepareDBs", exit=False)
