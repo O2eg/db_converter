@@ -5,7 +5,7 @@ INSERT INTO schema_1.test_tbl(fld_1, fld_2)
 
 do $$
 begin
-	if (select count(1) from schema_1.test_tbl where id > 100) <> 3 then
+	if (select count(1) from schema_1.test_tbl_f() where id > 100) <> 3 then
 		raise exception 'test_dba_clone_schema failed';
 	end if;
 end$$;
