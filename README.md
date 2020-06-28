@@ -63,6 +63,9 @@ Tasks that can be solved using `db_converter`:
 
 **Conversion** (migration, deployment) - is the transformation of the database structure according to the specified package of changes.
 
-![common flow](doc/dbc_common_flow.png)
+<p align="center">
+  <img src="doc/dbc_common_flow.png">
+</p>
+
 
 When executing the `Packet`, sql files are applied to the specified database sequentially in accordance with the index.
