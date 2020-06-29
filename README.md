@@ -68,7 +68,7 @@ Tasks that can be solved using `db_converter`:
 </p>
 
 
-When executing the `Packet`, sql files are applied to the specified database sequentially in accordance with the index.
+When executing the `Packet`, sql files are applied to the specified database sequentially in accordance with index.
 
 ## Usage modes
 
