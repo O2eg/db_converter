@@ -1,0 +1,5 @@
+{
+	"responsible": "Oleg Gurov",
+	"description": "get parameters",
+	"type": "read_only"
+}

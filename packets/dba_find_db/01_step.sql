@@ -1,0 +1,1 @@
+select datname from pg_database where datname ilike '%some_db%'
