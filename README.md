@@ -95,6 +95,7 @@ db_convertrer works in the following modes:
 Auxiliary deployment modes are also provided:
 
 * **Skip whole step** on first error like Deadlock, QueryCanceledError if `--skip-step-cancel` key is specified
+
 * **Skip action errors** like Deadlock, QueryCanceledError if `--skip-action-cancel` key is specified
 
 In all deployment modes two parameters are mandatory: `--db-name` and `--packet-name`
