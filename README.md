@@ -74,15 +74,15 @@ When executing the `Packet`, sql files are applied to the specified database seq
 
 `db_convertrer` works in the following modes:
 
-* **List** all target databases according `--db-name` mask if `--list` key is specified
+* **List** all target databases according `--db-name` mask if the `--list` key is specified
 
 * **Perform deployment** - deploy specified `packet` to the target database `--db-name`
 
-* **Perform force deployment** - forced deployment if `--force` key is specified - ignore the difference between hashes of `packet` at the time of repeated execution and at the time of first launch
+* **Perform force deployment** - forced deployment if the `--force` key is specified - ignore the difference between hashes of `packet` at the time of repeated execution and at the time of first launch
 
-* **Perform sequential deployment** if `--seq` key is specified, then parallel execution is disabled (if several databases are specified) and all databases are processed sequentially according to the specified list. Several databases can be processed in parallel, the possibility of parallelizing the conversion of one database does not make sense.
+* **Perform sequential deployment** if the `--seq` key is specified, then parallel execution is disabled (if several databases are specified) and all databases are processed sequentially according to the specified list. Several databases can be processed in parallel, the possibility of parallelizing the conversion of one database does not make sense.
 
-* **Check** packet status - display `packet` status if `--status` key is specified
+* **Check** packet status - display `packet` status if the `--status` key is specified
 
 * **Wipe** packet deployment history if the `--wipe` key is specified
 
@@ -90,12 +90,12 @@ When executing the `Packet`, sql files are applied to the specified database seq
 
 * **Stop** all active transactions of unexpectedly aborted deployment if the `--stop` key is specified
 
-* **Use template packet** - copy `*.sql` files from `packets/templates/template` to `packets/packet-name` if `--template` key is specified
+* **Use template packet** - copy `*.sql` files from `packets/templates/template` to `packets/packet-name` if the `--template` key is specified
 
 Auxiliary deployment modes are also provided:
 
-* **Skip whole step** on first error like `Deadlock`, `QueryCanceledError` if `--skip-step-cancel` key is specified
+* **Skip whole step** on first error like `Deadlock`, `QueryCanceledError` if the `--skip-step-cancel` key is specified
 
-* **Skip action errors** like `Deadlock`, `QueryCanceledError` if `--skip-action-cancel` key is specified
+* **Skip action errors** like `Deadlock`, `QueryCanceledError` if the `--skip-action-cancel` key is specified
 
 In all deployment modes two parameters are mandatory: `--db-name` and `--packet-name`
