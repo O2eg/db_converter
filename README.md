@@ -72,7 +72,7 @@ When executing the `Packet`, sql files are applied to the specified database seq
 
 ## Usage modes
 
-db_convertrer works in the following modes:
+`db_convertrer` works in the following modes:
 
 * **List** all target databases according `--db-name` mask if `--list` key is specified
 
@@ -94,8 +94,8 @@ db_convertrer works in the following modes:
 
 Auxiliary deployment modes are also provided:
 
-* **Skip whole step** on first error like Deadlock, QueryCanceledError if `--skip-step-cancel` key is specified
+* **Skip whole step** on first error like `Deadlock`, `QueryCanceledError` if `--skip-step-cancel` key is specified
 
-* **Skip action errors** like Deadlock, QueryCanceledError if `--skip-action-cancel` key is specified
+* **Skip action errors** like `Deadlock`, `QueryCanceledError` if `--skip-action-cancel` key is specified
 
 In all deployment modes two parameters are mandatory: `--db-name` and `--packet-name`
