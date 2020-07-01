@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.com/masterlee998/db_converter.svg?branch=master)](https://travis-ci.com/masterlee998/db_converter)
 
-db_converter is an open-source database migration tool for PostgreSQL designed for high loaded installations.
+`db_converter` is an open-source database migration tool for PostgreSQL designed for high loaded installations.
 
 # Table of contents
 
@@ -30,7 +30,7 @@ python38 tests/test_packets.py -v TestDBCLock
 
 # Dependencies and installation
 
-Python 3.x with modules: sqlparse, requests, pyzipper
+Python 3.x with modules: `sqlparse`, `requests`, `pyzipper`
 
 ```bash
 yum install -y python38
