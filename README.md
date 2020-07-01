@@ -17,6 +17,31 @@
 # How to run
 
 ```bash
+db_converter.py \
+	--packet-name==dba_get_conf \
+	--db-name=dbc
+
+# Info: =====> DBC 2.7 started
+# Info: =====> Hold lock for packet dba_get_conf in DB dbc
+# Info: Thread 'lock_observer_dbc' runned! Observed pids: []
+# Info: --------> Packet 'dba_get_conf' started for 'dbc' database!
+# Info: lock_observer_dbc: iteration done. Sleep on 5 seconds...
+# Info: Thread 'lock_observer_dbc': Observed pids: []
+# Info: Thread 'ro_manager_db_dbc', DB 'dbc', PID 24160, Packet 'dba_get_conf', Step '01_step.sql': progress 0.0%
+# Info:
+# ---------------------------------------------------------------------------
+# | name                         | value   | pretty_value | boot_val | unit |
+# ---------------------------------------------------------------------------
+# | autovacuum_max_workers       | 3       |              | 3        | None |
+# | autovacuum_naptime           | 60      |              | 60       | s    |
+# ....
+
+# Info: <-------- Packet 'dba_get_conf' finished for 'dbc' database!
+# Info: Thread lock_observer_dbc finished!
+# Info: <===== DBC 2.7 finished
+
+
+# run in background
 nohup python38 db_converter.py \
 	--packet-name=my_packet \
 	--db-name=ALL
