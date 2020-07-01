@@ -17,7 +17,7 @@
 # How to run
 
 ```bash
-db_converter.py \
+python38 db_converter.py \
 	--packet-name==dba_get_conf \
 	--db-name=dbc
 
@@ -35,7 +35,6 @@ db_converter.py \
 # | autovacuum_max_workers       | 3       |              | 3        | None |
 # | autovacuum_naptime           | 60      |              | 60       | s    |
 # ....
-
 # Info: <-------- Packet 'dba_get_conf' finished for 'dbc' database!
 # Info: Thread lock_observer_dbc finished!
 # Info: <===== DBC 2.7 finished
