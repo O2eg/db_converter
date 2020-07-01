@@ -107,11 +107,11 @@ In all deployment modes two parameters are mandatory:
 Ways to list target databases:
 
 ```bash
---db-name=my_db_01				# deployment on the specified database only
+--db-name=my_db_01	# deployment on the specified database only
 --db-name=my_db_01,my_db_02		# deployment on the listed databases
---db-name=my_db_0*				# deployment on databases matching mask
---db-name=ALL					# deployment will be carried out on all databases specified in the [databases] section of the db_converter.conf file
+--db-name=my_db_0*	# deployment on databases matching mask
+--db-name=ALL		# deployment will be carried out on all databases specified in the [databases] section of the db_converter.conf file
 --db-name=ALL,exclude:my_db_01,my_db_02		# deployment on all databases except those listed after ",exclude:"
---db-name=ALL,exclude:my_db_0*				# deployment on all databases except those matching the mask "my_db_0*"
+--db-name=ALL,exclude:my_db_0*			# deployment on all databases except those matching the mask "my_db_0*"
 --db-name=ALL,exclude:my_db_0*,my_db_10		# deployment on all databases except those matching the mask "my_db_0*" and except "my_db_10"
 ```
