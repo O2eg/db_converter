@@ -43,8 +43,10 @@ python38 db_converter.py \
 # run in background
 nohup python38 db_converter.py \
 	--packet-name=my_packet \
-	--db-name=ALL
+	--db-name=db01
     > /dev/null 2>&1 &
+
+tail -f log/dbc_db01_my_packet.log
 
 # run all tests
 python38 tests/test_packets.py -v
