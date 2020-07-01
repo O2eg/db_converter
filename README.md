@@ -28,7 +28,7 @@ python38 db_converter.py \
 # Info: --------> Packet 'dba_get_conf' started for 'dbc' database!
 # Info: lock_observer_dbc: iteration done. Sleep on 5 seconds...
 # Info: Thread 'lock_observer_dbc': Observed pids: []
-# Info: Thread 'ro_manager_db_dbc', DB 'dbc', PID 24160, Packet 'dba_get_conf', Step '01_step.sql': progress 0.0%
+# Info: Thread 'ro_manager_db_dbc', DB 'dbc', PID 24160, Packet 'dba_get_conf', ...
 # Info:
 # ---------------------------------------------------------------------------
 # | name                         | value   | pretty_value | boot_val | unit |
