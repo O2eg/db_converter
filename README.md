@@ -68,7 +68,7 @@ Tasks that can be solved using `db_converter`:
 </p>
 
 
-When executing the `Packet`, sql files are applied to the specified database sequentially in accordance with index.
+When executing `Packet`, sql files are applied to the specified database sequentially in accordance with index.
 
 ## Usage modes
 
@@ -84,11 +84,11 @@ When executing the `Packet`, sql files are applied to the specified database seq
 
 * **Check** packet status - display `packet` status if the `--status` key is specified
 
-* **Wipe** packet deployment history if the `--wipe` key is specified
+* **Wipe** packet deployment history if the `--wipe` key is specified. Wipe means delete from  `dbc_ *` tables. Removing information about an installed package can be used for debugging purposes.
 
 * **Unlock** unexpectedly aborted deployment if the `--unlock` key is specified
 
-* **Stop** all active transactions of unexpectedly aborted deployment if the `--stop` key is specified
+* **Stop** all active transactions of unexpectedly aborted deployment if the `--stop` key is specified. It this mode all active connections will be terminated matching with `application_name` *(specified in the `db_converter.conf` configuration file)* + `"_"` + `--packet-name`
 
 * **Use template packet** - copy `*.sql` files from `packets/templates/template` to `packets/packet-name` if the `--template` key is specified
 
@@ -98,4 +98,20 @@ Auxiliary deployment modes are also provided:
 
 * **Skip action errors** like `Deadlock`, `QueryCanceledError` if the `--skip-action-cancel` key is specified
 
-In all deployment modes two parameters are mandatory: `--db-name` and `--packet-name`
+In all deployment modes two parameters are mandatory:
+
+`--db-name` - name of directory located in `packets`
+
+`--packet-name` - the name of one database, a list of databases separated by commas, or `ALL` to automatically substitute all databases listed in `db_converter.conf`
+
+Ways to list target databases:
+
+```bash
+--db-name=my_db_01				# deployment on the specified database only
+--db-name=my_db_01,my_db_02		# deployment on the listed databases
+--db-name=my_db_0*				# deployment on databases matching mask
+--db-name=ALL					# deployment will be carried out on all databases specified in the [databases] section of the db_converter.conf file
+--db-name=ALL,exclude:my_db_01,my_db_02		# deployment on all databases except those listed after ",exclude:"
+--db-name=ALL,exclude:my_db_0*				# deployment on all databases except those matching the mask "my_db_0*"
+--db-name=ALL,exclude:my_db_0*,my_db_10		# deployment on all databases except those matching the mask "my_db_0*" and except "my_db_10"
+```
