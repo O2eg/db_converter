@@ -10,8 +10,8 @@
    * [How to run](#how-to-run)
    * [Dependencies and installation](#dependencies-and-installation)
    * [Introduction](#introduction)
-      * [Terminology](#terminology)
-      * [Usage modes](#usage-modes)
+   * [Terminology](#terminology)
+   * [Usage modes](#usage-modes)
 <!--te-->
 
 # How to run
@@ -56,7 +56,7 @@ Tasks that can be solved using `db_converter`:
 * Parallel processing of several databases
 * Export data in `csv` format into encrypted archive
 
-## Terminology
+# Terminology
 
 **Packet** - is a package of changes (a directory with sql files) that apply to the specified database. Packet contains `meta_data.json` (an optional file with meta information describing the package) and several sql files in `XX_step.sql` format.
 
@@ -79,7 +79,7 @@ Tasks that can be solved using `db_converter`:
 
 When executing `Packet`, sql files are applied to the specified database sequentially in accordance with index.
 
-## Usage modes
+# Usage modes
 
 `db_convertrer` works in the following modes:
 
