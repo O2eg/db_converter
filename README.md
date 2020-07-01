@@ -1,8 +1,8 @@
-# db_converter
+# About db_converter
 
 [![Build Status](https://travis-ci.com/masterlee998/db_converter.svg?branch=master)](https://travis-ci.com/masterlee998/db_converter)
 
-`db_converter` is an open-source database migration tool for PostgreSQL designed for high loaded installations.
+`db_converter` is an open-source database migration tool for PostgreSQL 9.6+ designed for high loaded installations.
 
 # Table of contents
 
@@ -34,7 +34,7 @@ Python 3.x with modules: `sqlparse`, `requests`, `pyzipper`
 
 ```bash
 yum install -y python38
-# if pip not installed
+# if pip is not installed
 curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 python3.8 get-pip.py
 pip3.8 install sqlparse
