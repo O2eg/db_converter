@@ -4,6 +4,16 @@
 
 db_converter is an open-source database migration tool for PostgreSQL designed for high loaded installations.
 
+# Table of contents
+
+<!--ts-->
+   * [How to run](#how-to-run)
+   * [Dependencies and installation](#dependencies-and-installation)
+   * [Introduction](#introduction)
+      * [Terminology](#terminology)
+      * [Usage modes](#usage-modes)
+<!--te-->
+
 # How to run
 
 ```bash
@@ -31,7 +41,6 @@ pip3.8 install sqlparse
 pip3.8 install requests
 pip3.8 install pyzipper
 ```
-
 
 # Introduction
 
@@ -100,9 +109,17 @@ Auxiliary deployment modes are also provided:
 
 In all deployment modes two parameters are mandatory:
 
-`--db-name` - name of directory located in `packets`
+* `--db-name` - name of directory located in `packets`
 
-`--packet-name` - the name of one database, a list of databases separated by commas, or `ALL` to automatically substitute all databases listed in `db_converter.conf`
+* `--packet-name` - the name of one database, a list of databases separated by commas, or `ALL` to automatically substitute all databases listed in `db_converter.conf`
+
+
+
+# Files layout
+
+
+
+# Parameters
 
 Ways to list target databases:
 
@@ -115,14 +132,6 @@ Ways to list target databases:
 --db-name=ALL,exclude:my_db_0*			# deployment on all databases except those matching the mask "my_db_0*"
 --db-name=ALL,exclude:my_db_0*,my_db_10		# deployment on all databases except those matching the mask "my_db_0*" and except "my_db_10"
 ```
-
-# Files layout
-
-
-
-# Parameters
-
-
 
 # Action tracker
 
