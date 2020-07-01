@@ -17,8 +17,9 @@
 # How to run
 
 ```bash
+# run read only packet
 python38 db_converter.py \
-	--packet-name==dba_get_conf \
+	--packet-name=dba_get_conf \
 	--db-name=dbc
 
 # Info: =====> DBC 2.7 started
