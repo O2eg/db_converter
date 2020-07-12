@@ -168,6 +168,7 @@ In all deployment modes two parameters are mandatory:
 
 <!--ts-->
    * [Files layout](https://github.com/masterlee998/db_converter/wiki/Files-layout)
+   * [Parameters](https://github.com/masterlee998/db_converter/wiki/Parameters)
    * [Action tracker](#)
    * [meta_data.json description](#)
       * [Packet types](#)
