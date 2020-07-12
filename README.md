@@ -22,6 +22,7 @@
    * [Dependencies and installation](#dependencies-and-installation)
    * [Terminology](#terminology)
    * [Usage modes](#usage-modes)
+   * [Roadmap](#roadmap)
 <!--te-->
 
 # Introduction
