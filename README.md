@@ -69,6 +69,8 @@ pip3.8 install requests
 pip3.8 install pyzipper
 ```
 
+Built-in module [py-postgresql](https://github.com/python-postgres/fe).
+
 # Introduction
 
 The basic goal of `db_converter` is to simplify the database conversion (migration) process as much as possible, while maintaining flexibility and functionality.
@@ -138,4 +140,4 @@ In all deployment modes two parameters are mandatory:
 
 * `--db-name` - name of directory located in `packets`
 
-* `--packet-name` - the name of one database, a list of databases separated by commas, or `ALL` to automatically substitute all databases listed in `db_converter.conf`
+* `--packet-name` - a name of one database or a list of databases separated by commas, or `ALL` to automatically substitute all databases listed in `db_converter.conf`
