@@ -1,6 +1,16 @@
 # About db_converter
 
-[![Build Status](https://travis-ci.com/masterlee998/db_converter.svg?branch=master)](https://travis-ci.com/masterlee998/db_converter)
+<p align="left">
+	<a href="https://travis-ci.com/masterlee998/db_converter">
+		<img alt="Build Status" src="https://travis-ci.com/masterlee998/db_converter.svg?branch=master">
+	</a>
+	<a href="https://github.com/masterlee998/db_converter/blob/master/LICENSE">
+		<img alt="GitHub license" src="https://img.shields.io/github/license/masterlee998/db_converter">
+	</a>
+    <a href="https://github.com/masterlee998/db_converter/releases">
+        <img alt="GitHub release" src="https://img.shields.io/github/release/masterlee998/db_converter">
+    </a>
+</p>
 
 `db_converter` is an open-source database migration tool for PostgreSQL 9.6+ designed for high loaded installations.
 
