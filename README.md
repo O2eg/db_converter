@@ -32,16 +32,19 @@ Tasks that can be solved using `db_converter`:
 
 * Transactional modification of data of any volume
 * Database structure changing with locks control
-* Database versioning
 * System and application notifications via `mattermost` (or any other messenger)
 * Database maintenance (deleting old data, creating triggers on partitions, etc.)
-* Parallel processing of several databases
 * Export data in `csv` format into encrypted archive
+
+The key features are:
+
+* Parallel processing of several databases
+* Handling of the locks to avoid impact on the regular workload
 
 # How to run
 
 ```bash
-# run read only packet
+# run read-only packet
 python38 db_converter.py \
 	--packet-name=dba_get_conf \
 	--db-name=dbc
@@ -151,3 +154,9 @@ In all deployment modes two parameters are mandatory:
 * `--db-name` - name of directory located in `packets`
 
 * `--packet-name` - a name of one database or a list of databases separated by commas, or `ALL` to automatically substitute all databases listed in `db_converter.conf`
+
+
+# Roadmap
+
+* Database versioning
+* Web interface
