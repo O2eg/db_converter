@@ -97,9 +97,9 @@ Tasks that can be solved using `db_converter`:
 
 **Action** - is a transaction formed on the basis of `step`. If `step` does not have a `generator`, then it creates one `action`. If `step` has a `generator`, then several transactions are generated.
 
-**Generator** - is a sql file associated with some `step` by index number. If there is a `generator`, `step` contains placeholders for substituting the values ​​returned by the `generator` (for more details see the "Generators and Placeholders" section).
+**Generator** - is a sql file associated with some `step` by index number. If there is a `generator`, `step` contains placeholders for substituting the values ​​returned by `generator` (for more details see the "Generators and Placeholders" section).
 
-**Conversion** (migration, deployment) - is the transformation of the database structure according to the specified package of changes.
+**Conversion** (migration, deployment) - is a transformation of the database structure according to specified package of changes.
 
 <p align="center">
   <img src="doc/dbc_common_flow.png">
