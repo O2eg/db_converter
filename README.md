@@ -12,7 +12,13 @@
     </a>
     <a href="https://gitter.im/db_converter/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge">
         <img alt="Gitter" src="https://badges.gitter.im/db_converter/community.svg">
-    </a>	
+    </a>
+    <a>
+        <img alt="Platforms" src="https://img.shields.io/badge/platforms-Windows%20%7C%20Linux-success.svg">
+    </a>
+    <a href="#">
+        <img alt="Platforms" src="https://img.shields.io/badge/platforms-Windows%20%7C%20Linux-success.svg">
+    </a>
 </p>
 
 `db_converter` is an open-source database migration tool for PostgreSQL 9.6+ designed for high loaded installations.
