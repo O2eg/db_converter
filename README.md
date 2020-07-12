@@ -172,5 +172,6 @@ In all deployment modes two parameters are mandatory:
 
 # Support and contributions
 
-Bug reports and new features are appreciated and may be filed through the issue tracker.
+Bug reports and new features are appreciated and may be filed through the [issue tracker](https://github.com/masterlee998/db_converter/issues).
+
 Feel free to get technical support in [Gitter](https://gitter.im/db_converter/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge).
