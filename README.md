@@ -17,12 +17,26 @@
 # Table of contents
 
 <!--ts-->
+   * [Introduction](#introduction)
    * [How to run](#how-to-run)
    * [Dependencies and installation](#dependencies-and-installation)
-   * [Introduction](#introduction)
    * [Terminology](#terminology)
    * [Usage modes](#usage-modes)
 <!--te-->
+
+# Introduction
+
+The basic goal of `db_converter` is to simplify the database conversion (migration) process as much as possible, while maintaining flexibility and functionality.
+
+Tasks that can be solved using `db_converter`:
+
+* Transactional modification of data of any volume
+* Database structure changing with locks control
+* Database versioning
+* System and application notifications via `mattermost` (or any other messenger)
+* Database maintenance (deleting old data, creating triggers on partitions, etc.)
+* Parallel processing of several databases
+* Export data in `csv` format into encrypted archive
 
 # How to run
 
@@ -80,20 +94,6 @@ pip3.8 install pyzipper
 ```
 
 Built-in module [py-postgresql](https://github.com/python-postgres/fe).
-
-# Introduction
-
-The basic goal of `db_converter` is to simplify the database conversion (migration) process as much as possible, while maintaining flexibility and functionality.
-
-Tasks that can be solved using `db_converter`:
-
-* Transactional modification of data of any volume
-* Database structure changing with locks control
-* Database versioning
-* System and application notifications via `mattermost` (or any other messenger)
-* Database maintenance (deleting old data, creating triggers on partitions, etc.)
-* Parallel processing of several databases
-* Export data in `csv` format into encrypted archive
 
 # Terminology
 
