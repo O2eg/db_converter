@@ -10,6 +10,9 @@
     <a href="https://github.com/masterlee998/db_converter/releases">
         <img alt="GitHub release" src="https://img.shields.io/github/release/masterlee998/db_converter">
     </a>
+    <a href="https://gitter.im/db_converter/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge">
+        <img alt="Gitter" src="https://badges.gitter.im/db_converter/community.svg">
+    </a>	
 </p>
 
 `db_converter` is an open-source database migration tool for PostgreSQL 9.6+ designed for high loaded installations.
@@ -22,7 +25,9 @@
    * [Dependencies and installation](#dependencies-and-installation)
    * [Terminology](#terminology)
    * [Usage modes](#usage-modes)
+   * [Documentation](#documentation)
    * [Roadmap](#roadmap)
+   * [Support and contributions](#support-and-contributions)
 <!--te-->
 
 # Introduction
@@ -156,8 +161,16 @@ In all deployment modes two parameters are mandatory:
 
 * `--packet-name` - a name of one database or a list of databases separated by commas, or `ALL` to automatically substitute all databases listed in `db_converter.conf`
 
+# Documentation
+
+
 
 # Roadmap
 
 * Database versioning
 * Web interface
+
+# Support and contributions
+
+Bug reports and new features are appreciated and may be filed through the issue tracker.
+Feel free to get technical support in [Gitter](https://gitter.im/db_converter/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge).
