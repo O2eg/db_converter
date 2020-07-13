@@ -13,7 +13,7 @@ from dbccore import *
 import shutil
 from enum import Enum
 
-VERSION = 2.7
+VERSION = 1.0
 
 
 class SysConf:

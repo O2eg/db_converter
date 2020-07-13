@@ -58,7 +58,7 @@ python38 db_converter.py \
 	--packet-name=dba_get_conf \
 	--db-name=dbc
 
-	# Info: =====> DBC 2.7 started
+	# Info: =====> DBC 1.0 started
 	# Info: =====> Hold lock for packet dba_get_conf in DB dbc
 	# Info: Thread 'lock_observer_dbc' runned! Observed pids: []
 	# Info: --------> Packet 'dba_get_conf' started for 'dbc' database!
@@ -74,7 +74,7 @@ python38 db_converter.py \
 	# ....
 	# Info: <-------- Packet 'dba_get_conf' finished for 'dbc' database!
 	# Info: Thread lock_observer_dbc finished!
-	# Info: <===== DBC 2.7 finished
+	# Info: <===== DBC 1.0 finished
 
 
 # run in background
