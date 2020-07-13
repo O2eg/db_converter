@@ -5,10 +5,10 @@
 		<img alt="Build Status" src="https://travis-ci.com/masterlee998/db_converter.svg?branch=master">
 	</a>
 	<a href="https://github.com/masterlee998/db_converter/blob/master/LICENSE">
-		<img alt="GitHub license" src="https://img.shields.io/github/license/masterlee998/db_converter">
+		<img alt="GitHub license" src="https://img.shields.io/github/license/masterlee998/db_converter.svg">
 	</a>
     <a href="https://github.com/masterlee998/db_converter/releases">
-        <img alt="GitHub release" src="https://img.shields.io/github/release/masterlee998/db_converter">
+        <img alt="GitHub release" src="https://img.shields.io/github/v/release/masterlee998/db_converter.svg">
     </a>
     <a href="https://gitter.im/db_converter/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge">
         <img alt="Gitter" src="https://badges.gitter.im/db_converter/community.svg">
