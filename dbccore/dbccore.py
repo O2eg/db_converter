@@ -1004,8 +1004,17 @@ class DBCCore:
                             if ctx.meta_data_json["type"] == PacketType.NO_COMMIT.value:
                                 self.logger.log("%s: Performing rollback..." % (ctx.info()), "Info")
                                 xact.rollback()
-        except postgresql.exceptions.OperationError:
-            self.logger.log("%s: Transaction aborted" % (ctx.info()), "Info", do_print=True)
+        except (
+                postgresql.exceptions.OperationError,
+                postgresql.exceptions.ReadOnlyTransactionError
+        ):
+            exception_descr = exception_helper(self.sys_conf.detailed_traceback)
+            self.logger.log(
+                'Exception in "execute_q" %s: \n%s' % (ctx.info(), exception_descr),
+                "Error",
+                do_print=True
+            )
+            raise Exception('execute_q')
 
         # output via hook
         self.resultset_hook(ctx, results)
