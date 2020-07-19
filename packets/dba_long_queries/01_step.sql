@@ -5,11 +5,11 @@ select
     pid,
     backend_xid,
     case when now() - state_change >= '00:00:00.000001'
-        then to_char(now() - state_change, 'HH12:MI:SS.MS')
+        then date_trunc('milliseconds', now() - state_change)
         else '00:00:00'
     end as state_change_age,
     case when now() - xact_start >= '00:00:00.000001'
-        then to_char(now() - xact_start, 'HH12:MI:SS.MS')
+        then date_trunc('milliseconds', now() - xact_start)
         else '00:00:00'
     end as xact_start_age,
     application_name as app_name,
