@@ -144,7 +144,7 @@ numeric_signs = {
 
 def numeric_unpack(x, unpack = lib.numeric_unpack):
 	header, digits = unpack(x)
-	if header == (0, 0, 0, 0) and len(digits) == 0:
+	if len(digits) == 0:
 		digits = (0,)
 	npad = (header[3] - ((header[0] - (header[1] + 1)) * 4))
 	return Decimal((
