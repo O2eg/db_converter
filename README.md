@@ -4,6 +4,9 @@
 	<a href="https://travis-ci.com/masterlee998/db_converter">
 		<img alt="Build Status" src="https://travis-ci.com/masterlee998/db_converter.svg?branch=master">
 	</a>
+	<a href="https://coveralls.io/github/masterlee998/db_converter?branch=master">
+		<img alt="Coverage Status" src="https://coveralls.io/repos/github/masterlee998/db_converter/badge.svg?branch=master">
+	</a>
 	<a href="https://github.com/masterlee998/db_converter/blob/master/LICENSE">
 		<img alt="GitHub license" src="https://img.shields.io/github/license/masterlee998/db_converter.svg">
 	</a>
