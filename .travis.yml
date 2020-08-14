@@ -25,7 +25,7 @@ jobs:
         - psql -c "ALTER USER postgres WITH PASSWORD 'postgres87291';" -U postgres -h 127.0.0.1
         - psql -c "select version();" -U postgres -h 127.0.0.1
       script:
-        - coverage run --source=dbccore,psc/pgstatcommon,psc/pgstatlogger,actiontracker,matterhook,db_converter tests\test_packets.py -v
+        - coverage run --source=dbccore,psc/pgstatcommon,psc/pgstatlogger,actiontracker,matterhook,db_converter tests/test_packets.py -v
       after_success:
         - coveralls
     - os: linux
@@ -50,6 +50,6 @@ jobs:
         - psql -c "ALTER USER postgres WITH PASSWORD 'postgres87291';" -U postgres -h 127.0.0.1
         - psql -c "select version();" -U postgres -h 127.0.0.1
       script:
-        - coverage run --source=dbccore,psc/pgstatcommon,psc/pgstatlogger,actiontracker,matterhook,db_converter tests\test_packets.py -v
+        - coverage run --source=dbccore,psc/pgstatcommon,psc/pgstatlogger,actiontracker,matterhook,db_converter tests/test_packets.py -v
       after_success:
         - coveralls
