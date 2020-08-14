@@ -458,7 +458,7 @@ class TestDBCWaitTxTimeout(unittest.TestCase):
             th_db_conn.execute("""
                 do $$
                 begin
-                perform pg_sleep(2);
+                perform pg_sleep(3);
                 perform * from public.test_wait_tx_tbl;
                 perform pg_sleep(10);
                 end$$
