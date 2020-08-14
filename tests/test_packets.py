@@ -33,7 +33,8 @@ class TestDBCPackets(unittest.TestCase):
                 'test_blocker_tx',
                 'test_wait_tx',
                 'test_int4_to_int8',
-                'test_export_data'
+                'test_export_data',
+                'test_py_step'
             ]
         ]:
             args = dict(
