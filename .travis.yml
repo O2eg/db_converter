@@ -8,6 +8,7 @@ jobs:
         - pip install sqlparse
         - pip install requests
         - pip install pyzipper
+        - pip install coverage
         - pip install coveralls
       before_script:
         - export PATH="/usr/lib/postgresql/10/bin:$PATH"
@@ -24,7 +25,7 @@ jobs:
         - psql -c "ALTER USER postgres WITH PASSWORD 'postgres87291';" -U postgres -h 127.0.0.1
         - psql -c "select version();" -U postgres -h 127.0.0.1
       script:
-        - py.test tests/test_packets.py --cov coveralls
+        - coverage-script.py run --source=dbccore,psc/pgstatcommon,psc/pgstatlogger,actiontracker,matterhook,db_converter tests\test_packets.py -v
       after_success:
         - coveralls
     - os: linux
@@ -34,6 +35,7 @@ jobs:
         - pip install sqlparse
         - pip install requests
         - pip install pyzipper
+        - pip install coverage
         - pip install coveralls
       before_script:
         - export PATH="/usr/lib/postgresql/12/bin:$PATH"
@@ -48,6 +50,6 @@ jobs:
         - psql -c "ALTER USER postgres WITH PASSWORD 'postgres87291';" -U postgres -h 127.0.0.1
         - psql -c "select version();" -U postgres -h 127.0.0.1
       script:
-        - py.test tests/test_packets.py --cov coveralls
+        - coverage-script.py run --source=dbccore,psc/pgstatcommon,psc/pgstatlogger,actiontracker,matterhook,db_converter tests\test_packets.py -v
       after_success:
         - coveralls
