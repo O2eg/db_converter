@@ -1,1 +1,1 @@
-vacuum full public.test_wai_tx_tbl
+vacuum full public.test_wait_tx_tbl
