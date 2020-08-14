@@ -417,7 +417,7 @@ class TestDBCBlockerTxTimeout(unittest.TestCase):
 
         @threaded
         def emulate_workload():
-            time.sleep(1)
+            time.sleep(3)
             th_db_conn = postgresql.open(main.sys_conf.dbs_dict[self.db_name])
             th_db_conn.execute("""vacuum full public.test_blocker_tx_tbl""")
             th_db_conn.close()
@@ -632,7 +632,7 @@ class TestDBCPyStep(unittest.TestCase):
     packet_name = 'test_py_step'
     db_name = 'test_dbc_01'
 
-    def test_blocker_tx(self):
+    def test_py_step(self):
         parser = DBCParams.get_arg_parser()
         args = parser.parse_args([
             '--packet-name=' + self.packet_name,
@@ -669,7 +669,7 @@ class TestDBCCloneSchema(unittest.TestCase):
     dba_packet_name = 'dba_clone_schema'
     db_name = 'test_dbc_01'
 
-    def test_blocker_tx(self):
+    def test_clone_schema(self):
         parser = DBCParams.get_arg_parser()
 
         MainRoutine(parser.parse_args([

@@ -13,7 +13,7 @@ from dbccore import *
 import shutil
 from enum import Enum
 
-VERSION = 1.0
+VERSION = 1.1
 
 
 class SysConf:
@@ -476,11 +476,8 @@ class MainRoutine(DBCParams, DBCCore):
     def run_on_db(self, db_name, str_conn):
         db_conn = postgresql.open(str_conn)
         # ================================================================================================
-        # Call init_tbls for specific args
-        if self.packet_type == PacketType.DEFAULT or \
-                self.command_type == CommandType.WIPE or \
-                self.command_type == CommandType.STATUS:
-            ActionTracker.init_tbls(db_conn)
+        # Check 'dbc_packets', 'dbc_steps', 'dbc_actions', 'dbc_locks' tables
+        ActionTracker.init_tbls(db_conn)
         # ================================================================================================
         if self.packet_type == PacketType.DEFAULT or self.args.status:
             self.fill_status(db_name, db_conn)
