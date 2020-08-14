@@ -659,7 +659,6 @@ class TestDBCPyStep(unittest.TestCase):
             WHERE fname in ('data_a.txt', 'data_b.txt')
             ORDER BY id
         """)
-        print("content = " + str(content))
         self.assertTrue(content[0][0] == 'Some raw data A')
         self.assertTrue(content[1][0] == 'Some raw data B')
         db_local.close()
