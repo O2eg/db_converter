@@ -79,6 +79,7 @@ class TestDBCPackets(unittest.TestCase):
             self.assertTrue(res.packet_status[args.db_name] == PacketStatus.NEW)
 
         for args in self.runs:
+            print("=================> TestDBCPackets: " + str(args[0].packet_name))
             res = MainRoutine(args[0], self.conf_file).run()
             if args[1] == ResultCode.SUCCESS:
                 self.assertTrue(res.result_code[args[0].db_name] == ResultCode.SUCCESS)
@@ -132,13 +133,13 @@ class TestDBCLock(unittest.TestCase):
         self.assertTrue(res_1.result_code[self.db_name] == ResultCode.NOTHING_TODO)
 
         db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
-        ActionTracker.set_packet_lock(db_conn, self.packet_name)
+        ActionTracker.set_packet_lock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
 
         res_2 = MainRoutine(self.run_params, self.conf_file).run()
         self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.STARTED)
         self.assertTrue(res_2.result_code[self.db_name] == ResultCode.LOCKED)
 
-        ActionTracker.set_packet_unlock(db_conn, self.packet_name)
+        ActionTracker.set_packet_unlock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
         db_conn.close()
 
         res_3 = MainRoutine(self.run_params, self.conf_file).run()
@@ -157,13 +158,13 @@ class TestDBCLockKey(unittest.TestCase):
         dbc = MainRoutine(args, self.conf_file)
 
         db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
-        ActionTracker.set_packet_lock(db_conn, self.packet_name)
+        ActionTracker.set_packet_lock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
 
         res_1 = dbc.run()
         self.assertTrue(res_1.packet_status[self.db_name] == PacketStatus.STARTED)
         self.assertTrue(res_1.result_code[self.db_name] == ResultCode.LOCKED)
 
-        ActionTracker.set_packet_unlock(db_conn, self.packet_name)
+        ActionTracker.set_packet_unlock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
 
         res_2 = MainRoutine(args, self.conf_file).run()
         self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
@@ -183,7 +184,7 @@ class TestDBCSignal(unittest.TestCase):
 
         dbc = MainRoutine(args, self.conf_file)
         db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
-        ActionTracker.set_packet_unlock(db_conn, self.packet_name)
+        ActionTracker.set_packet_unlock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
         db_conn.close()
 
         main = MainRoutine(args, self.conf_file)
@@ -244,8 +245,8 @@ class TestDBCConnErr(unittest.TestCase):
 
         dbc = MainRoutine(args, self.conf_file)
         db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
-        ActionTracker.init_tbls(db_conn)
-        ActionTracker.set_packet_unlock(db_conn, self.packet_name)
+        ActionTracker.init_tbls(db_conn, dbc.sys_conf.schema_location)
+        ActionTracker.set_packet_unlock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
         db_conn.close()
 
         main = MainRoutine(args, self.conf_file)
@@ -289,7 +290,7 @@ class TestDBCSkipStepCancel(unittest.TestCase):
 
         dbc = MainRoutine(args, self.conf_file)
         db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
-        ActionTracker.set_packet_unlock(db_conn, self.packet_name)
+        ActionTracker.set_packet_unlock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
         db_conn.close()
 
         main = MainRoutine(args, self.conf_file)
@@ -333,7 +334,7 @@ class TestDBCSkipActionCancel(unittest.TestCase):
 
         dbc = MainRoutine(args, self.conf_file)
         db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
-        ActionTracker.set_packet_unlock(db_conn, self.packet_name)
+        ActionTracker.set_packet_unlock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
         db_conn.close()
 
         main = MainRoutine(args, self.conf_file)
@@ -372,7 +373,7 @@ class TestDBCPrepareDBs(unittest.TestCase):
         ])
         dbc = MainRoutine(args, self.conf_file)
         db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
-        ActionTracker.cleanup(db_conn)
+        ActionTracker.cleanup(db_conn, dbc.sys_conf.schema_location)
 
         db_conn.execute("""
             SELECT pg_terminate_backend(pid)
@@ -566,10 +567,10 @@ class TestDBCAlertAndDBAPackets(unittest.TestCase):
         args = parser.parse_args(['--packet-name=dba_get_version', '--db-name=' + self.db_name])
         dbc = MainRoutine(args, self.conf_file)
         db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
-        ActionTracker.init_tbls(db_conn)
+        ActionTracker.init_tbls(db_conn, dbc.sys_conf.schema_location)
 
         for args in self.runs:
-            ActionTracker.set_packet_unlock(db_conn, args.packet_name)
+            ActionTracker.set_packet_unlock(db_conn, dbc.sys_conf.schema_location, args.packet_name)
             res = MainRoutine(args, self.conf_file).run()
             self.assertTrue(res.result_code[args.db_name] == ResultCode.SUCCESS)
             self.assertTrue(res.packet_status[args.db_name] == PacketStatus.DONE)

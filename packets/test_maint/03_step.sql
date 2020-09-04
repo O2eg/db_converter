@@ -1,5 +1,5 @@
-drop index if exists public.dbc_packets_dt_test_idx;
+drop index if exists dbc.dbc_packets_dt_test_idx;
 
 CREATE INDEX dbc_packets_dt_test_idx
-    ON public.dbc_packets USING btree
+    ON dbc.dbc_packets USING btree
     (dt);

@@ -13,7 +13,7 @@ from dbccore import *
 import shutil
 from enum import Enum
 
-VERSION = 1.1
+VERSION = 1.2
 
 
 class SysConf:
@@ -55,6 +55,7 @@ class SysConf:
         self.cancel_wait_tx_timeout = get_key('main', 'cancel_wait_tx_timeout', '5 seconds')
         self.detailed_traceback = get_key('main', 'detailed_traceback', 'True', boolean=True)
         self.db_name_all_confirmation = get_key('main', 'db_name_all_confirmation', 'True', boolean=True)
+        self.schema_location = get_key('main', 'schema_location', 'public')
 
         # log parameters
         self.log_level = get_key('log', 'log_level', 'Info')
@@ -447,7 +448,9 @@ class MainRoutine(DBCParams, DBCCore):
                     self.interrupt_all_conns()
 
     def fill_status(self, db_name, db_conn):
-        self.db_packet_status = ActionTracker.get_packet_status(db_conn, self.args.packet_name)
+        self.db_packet_status = ActionTracker.get_packet_status(
+            db_conn, self.sys_conf.schema_location, self.args.packet_name
+        )
         if "status" in self.db_packet_status:
             if "exception_descr" in self.db_packet_status and self.db_packet_status["exception_descr"] is not None:
                 self.packet_status[db_name] = PacketStatus.EXCEPTION
@@ -477,7 +480,7 @@ class MainRoutine(DBCParams, DBCCore):
         db_conn = postgresql.open(str_conn)
         # ================================================================================================
         # Check 'dbc_packets', 'dbc_steps', 'dbc_actions', 'dbc_locks' tables
-        ActionTracker.init_tbls(db_conn)
+        ActionTracker.init_tbls(db_conn, self.sys_conf.schema_location)
         # ================================================================================================
         if self.packet_type == PacketType.DEFAULT or self.args.status:
             self.fill_status(db_name, db_conn)
@@ -501,8 +504,8 @@ class MainRoutine(DBCParams, DBCCore):
                 PacketType.NO_COMMIT,
                 PacketType.EXPORT_DATA
         ):
-            wipe_res = ActionTracker.wipe_packet(db_conn, self.args.packet_name)
-            ActionTracker.set_packet_unlock(db_conn, self.args.packet_name)
+            wipe_res = ActionTracker.wipe_packet(db_conn, self.sys_conf.schema_location, self.args.packet_name)
+            ActionTracker.set_packet_unlock(db_conn, self.sys_conf.schema_location, self.args.packet_name)
             if wipe_res:
                 self.result_code[db_name] = ResultCode.SUCCESS
                 print("=====> Database '%s', packet '%s' successfully wiped!" % (db_name, self.args.packet_name))
@@ -534,7 +537,7 @@ class MainRoutine(DBCParams, DBCCore):
         if not self.args.unlock and self.command_type == CommandType.RUN:
             if self.packet_status[db_name] != PacketStatus.DONE:
                 # ===========================================
-                if ActionTracker.is_packet_locked(db_conn, self.args.packet_name):
+                if ActionTracker.is_packet_locked(db_conn, self.sys_conf.schema_location, self.args.packet_name):
                     self.logger.log(
                         '=====> Packet %s is locked in DB %s' % (self.args.packet_name, db_name),
                         "Error",
@@ -543,7 +546,7 @@ class MainRoutine(DBCParams, DBCCore):
                     self.result_code[db_name] = ResultCode.LOCKED
                     self.packet_status[db_name] = PacketStatus.STARTED
                 else:
-                    ActionTracker.set_packet_lock(db_conn, self.args.packet_name)
+                    ActionTracker.set_packet_lock(db_conn, self.sys_conf.schema_location, self.args.packet_name)
                     self.logger.log(
                         '=====> Hold lock for packet %s in DB %s' % (self.args.packet_name, db_name),
                         "Info",
@@ -587,8 +590,8 @@ class MainRoutine(DBCParams, DBCCore):
                 self.result_code[db_name] = ResultCode.NOTHING_TODO
 
         if self.args.unlock:
-            if ActionTracker.is_packet_locked(db_conn, self.args.packet_name):
-                ActionTracker.set_packet_unlock(db_conn, self.args.packet_name)
+            if ActionTracker.is_packet_locked(db_conn, self.sys_conf.schema_location, self.args.packet_name):
+                ActionTracker.set_packet_unlock(db_conn, self.sys_conf.schema_location, self.args.packet_name)
                 self.result_code[db_name] = ResultCode.SUCCESS
             else:
                 self.result_code[db_name] = ResultCode.NOTHING_TODO
@@ -648,7 +651,7 @@ class MainRoutine(DBCParams, DBCCore):
         for db, result in self.workers_result.items():
             if db in self.sys_conf.dbs_dict:
                 db_conn = postgresql.open(self.sys_conf.dbs_dict[db])
-                ActionTracker.set_packet_unlock(db_conn, self.args.packet_name)
+                ActionTracker.set_packet_unlock(db_conn, self.sys_conf.schema_location, self.args.packet_name)
                 db_conn.close()
                 if result == WorkerResult.SUCCESS:
                     self.result_code[db] = ResultCode.SUCCESS

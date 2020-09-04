@@ -1,1 +1,1 @@
-vacuum dbc_packets;
+vacuum dbc.dbc_packets;

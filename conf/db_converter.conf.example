@@ -12,6 +12,7 @@ cancel_wait_tx_timeout = '3 minutes'
 cancel_blocker_tx_timeout = '60 seconds'
 detailed_traceback = False
 db_name_all_confirmation = True
+schema_location = dbc
 
 [log]
 log_level = Debug                # Debug, Info, Error

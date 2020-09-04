@@ -610,7 +610,9 @@ class DBCCore:
                     )
                 # ======================================================
                 if not self.args.force:
-                    packet_status = ActionTracker.get_packet_status(db_local, packet_name)
+                    packet_status = ActionTracker.get_packet_status(
+                        db_local, self.sys_conf.schema_location, packet_name
+                    )
                     if "hash" in packet_status:
                         if packet_status["hash"] != packet_hash:
                             do_work = False
@@ -656,11 +658,15 @@ class DBCCore:
                                 )
                             if result == 'done' and exception_descr is None:
                                 # step successfully complete
-                                ActionTracker.set_step_status(db_local, packet_name, step[0], result)
+                                ActionTracker.set_step_status(
+                                    db_local, self.sys_conf.schema_location, packet_name, step[0], result
+                                )
                             if result == 'exception' and exception_descr is not None and \
                                     exception_descr not in('connection', 'skip_step'):
                                 # syntax exception or pre/post check raised exception
-                                ActionTracker.set_step_exception_status(db_local, packet_name, step[0], exception_descr)
+                                ActionTracker.set_step_exception_status(
+                                    db_local, self.sys_conf.schema_location, packet_name, step[0], exception_descr
+                                )
                                 return result, exception_descr, False
                             if result == 'terminate':
                                 return 'terminate', None, False
@@ -721,10 +727,12 @@ class DBCCore:
                 self.logger.log(msg, "Error", do_print=True)
 
         if not work_breaked and self.errors_count == 0:
-            ActionTracker.set_packet_status(db_local, packet_name, 'done' if exception_descr is None else 'exception')
+            ActionTracker.set_packet_status(
+                db_local, self.sys_conf.schema_location, packet_name, 'done' if exception_descr is None else 'exception'
+            )
 
         if not work_breaked and self.errors_count > 0:
-            ActionTracker.set_packet_status(db_local, packet_name, 'exception')
+            ActionTracker.set_packet_status(db_local, self.sys_conf.schema_location, packet_name, 'exception')
 
         if db_local is not None:
             db_local.close()
@@ -961,6 +969,7 @@ class DBCCore:
                 return True
 
         conn.msghook = partial(filter_notices, msgs_list=results)
+        conn.execute('RESET search_path')
 
         try:
             if self.is_maint_query(query.lower()):
@@ -1059,7 +1068,7 @@ class DBCCore:
                             if step_hash in steps_hashes:
                                 continue
                             if enable_at and ActionTracker.is_action_exists(
-                                    db_local, ctx.packet_name, ctx.step[0], step_hash
+                                    db_local, self.sys_conf.schema_location, ctx.packet_name, ctx.step[0], step_hash
                             ):
                                 steps_hashes[step_hash] = ctx.step[0]
                                 self.logger.log(
@@ -1073,12 +1082,21 @@ class DBCCore:
                                 if self.sys_conf.execute_sql:
                                     if enable_at:
                                         ActionTracker.begin_action(
-                                            db_local, ctx.packet_name, ctx.packet_hash, ctx.step[0], ctx.meta_data
+                                            db_local,
+                                            self.sys_conf.schema_location,
+                                            ctx.packet_name,
+                                            ctx.packet_hash,
+                                            ctx.step[0],
+                                            ctx.meta_data
                                         )
                                     self.execute_q(ctx, db_local, gen_query)
                                     if enable_at:
                                         ActionTracker.apply_action(
-                                            db_local, ctx.packet_name, ctx.step[0], step_hash
+                                            db_local,
+                                            self.sys_conf.schema_location,
+                                            ctx.packet_name,
+                                            ctx.step[0],
+                                            step_hash
                                         )
                                     steps_hashes[step_hash] = ctx.step[0]
                                     self.logger.log("%s: action finished" % (ctx.info()), "Info")
@@ -1108,6 +1126,7 @@ class DBCCore:
                             continue
                         if enable_at and ActionTracker.is_action_exists(
                                 db_local,
+                                self.sys_conf.schema_location,
                                 ctx.packet_name,
                                 ctx.step[0],
                                 step_hash
@@ -1124,11 +1143,22 @@ class DBCCore:
                             if self.sys_conf.execute_sql:
                                 if enable_at:
                                     ActionTracker.begin_action(
-                                        db_local, ctx.packet_name, ctx.packet_hash, ctx.step[0], ctx.meta_data
+                                        db_local,
+                                        self.sys_conf.schema_location,
+                                        ctx.packet_name,
+                                        ctx.packet_hash,
+                                        ctx.step[0],
+                                        ctx.meta_data
                                     )
                                 self.execute_q(ctx, db_local, gen_query)
                                 if enable_at:
-                                    ActionTracker.apply_action(db_local, ctx.packet_name, ctx.step[0], step_hash)
+                                    ActionTracker.apply_action(
+                                        db_local,
+                                        self.sys_conf.schema_location,
+                                        ctx.packet_name,
+                                        ctx.step[0],
+                                        step_hash
+                                    )
                                 steps_hashes[step_hash] = ctx.step[0]
                                 self.logger.log("%s: action finished" % (ctx.info()), "Info")
 
@@ -1150,7 +1180,9 @@ class DBCCore:
                         step_hash = hashlib.md5(gen_query.encode()).hexdigest()
                         if step_hash in steps_hashes:
                             continue
-                        if enable_at and ActionTracker.is_action_exists(db_local, ctx.packet_name, ctx.step[0], step_hash):
+                        if enable_at and ActionTracker.is_action_exists(
+                                db_local, self.sys_conf.schema_location, ctx.packet_name, ctx.step[0], step_hash
+                        ):
                             steps_hashes[step_hash] = ctx.step[0]
                             self.logger.log("%s: action already executed with hash %s" % (ctx.info(), step_hash), "Info")
                         else:
@@ -1159,10 +1191,17 @@ class DBCCore:
                                 self.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
                             if self.sys_conf.execute_sql:
                                 if enable_at: ActionTracker.begin_action(
-                                    db_local, ctx.packet_name, ctx.packet_hash, ctx.step[0], ctx.meta_data
+                                    db_local,
+                                    self.sys_conf.schema_location,
+                                    ctx.packet_name,
+                                    ctx.packet_hash,
+                                    ctx.step[0],
+                                    ctx.meta_data
                                 )
                                 self.execute_q(ctx, db_local, gen_query)
-                                if enable_at: ActionTracker.apply_action(db_local, ctx.packet_name, ctx.step[0], step_hash)
+                                if enable_at: ActionTracker.apply_action(
+                                    db_local, self.sys_conf.schema_location, ctx.packet_name, ctx.step[0], step_hash
+                                )
                                 steps_hashes[step_hash] = ctx.step[0]
                                 self.logger.log("%s: action finished" % (ctx.info()), "Info")
 
@@ -1176,7 +1215,9 @@ class DBCCore:
                 if ctx.step[1].find("GEN_NSP_FLD_") == -1 and ctx.step[1].find("GEN_OBJ_FLD_") == -1:
                     step_hash = hashlib.md5(ctx.step[1].encode()).hexdigest()
                     if step_hash not in steps_hashes:
-                        if enable_at and ActionTracker.is_action_exists(db_local, ctx.packet_name, ctx.step[0], step_hash):
+                        if enable_at and ActionTracker.is_action_exists(
+                                db_local, self.sys_conf.schema_location, ctx.packet_name, ctx.step[0], step_hash
+                        ):
                             steps_hashes[step_hash] = ctx.step[0]
                             self.logger.log(
                                 "%s: action already executed with hash %s" % (ctx.info(), step_hash),
@@ -1188,7 +1229,12 @@ class DBCCore:
                                 self.logger.log("%s:\n%s" % (ctx.info(), ctx.step[1]), "Info")
                             if self.sys_conf.execute_sql:
                                 if enable_at: ActionTracker.begin_action(
-                                    db_local, ctx.packet_name, ctx.packet_hash, ctx.step[0], ctx.meta_data
+                                    db_local,
+                                    self.sys_conf.schema_location,
+                                    ctx.packet_name,
+                                    ctx.packet_hash,
+                                    ctx.step[0],
+                                    ctx.meta_data
                                 )
                                 if ctx.step[0].endswith(".py"):
                                     # python step custom execution
@@ -1196,7 +1242,9 @@ class DBCCore:
                                 else:
                                     self.execute_q(ctx, db_local, ctx.step[1])
                                 if enable_at:
-                                    ActionTracker.apply_action(db_local, ctx.packet_name, ctx.step[0], step_hash)
+                                    ActionTracker.apply_action(
+                                        db_local, self.sys_conf.schema_location, ctx.packet_name, ctx.step[0], step_hash
+                                    )
                                 steps_hashes[step_hash] = ctx.step[0]
                                 self.logger.log("%s: action finished" % (ctx.info()), "Info")
                             # ========================================================================

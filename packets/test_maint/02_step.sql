@@ -1,1 +1,1 @@
-analyze dbc_packets;
+analyze dbc.dbc_packets;
