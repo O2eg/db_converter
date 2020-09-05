@@ -89,6 +89,7 @@ class DBCParams:
     sys_conf = None
     logger = None
     args = None
+    placeholders = {}
     is_terminate = False
     matterhooks = None
     errors_count = 0
@@ -174,7 +175,13 @@ class DBCParams:
         )
         parser.add_argument(
             "--conf",
-            help="Override parameters of 'conf/db_converter.conf'",
+            help="Override parameters of 'conf/db_converter.conf'. JSON format.",
+            type=str,
+            default=""
+        )
+        parser.add_argument(
+            "--placeholders",
+            help="Replace placeholders in SQL code with the specified values. JSON format.",
             type=str,
             default=""
         )
@@ -267,6 +274,12 @@ class DBCParams:
                     self.sys_conf.__dict__.update(conf_json)
                 except:
                     raise Exception('Invalid value in --conf parameter')
+
+            if hasattr(self.args, 'placeholders') and self.args.placeholders != '':
+                try:
+                    self.placeholders = json.loads(self.args.placeholders)
+                except:
+                    raise Exception('Invalid value in --placeholders parameter')
 
         except SystemExit as e:
             print("Exiting...")

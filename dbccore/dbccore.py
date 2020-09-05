@@ -272,6 +272,11 @@ class DBCCore:
                     db_conn.close()
         self.logger.log('Thread %s finished!' % thread_name, "Info", do_print=True)
 
+    def apply_placeholders(self, sql):
+        for k, v in self.placeholders.items():
+            sql = sql.replace("DBC_PL_%s" % k, v)
+        return sql
+
     def parse_packet(self, packet_name, thread_name):
         step_files = []
         gen_obj_files = {}
@@ -289,11 +294,11 @@ class DBCCore:
                     current_file.close()
 
                     if (step.endswith('.sql') or step.endswith('.py')) and step.find('_gen_') == -1:
-                        step_files.append([step, file_content])
+                        step_files.append([step, self.apply_placeholders(file_content)])
                     if step.endswith('.sql') and step.find('_gen_obj') != -1:
-                        gen_obj_files[step] = file_content
+                        gen_obj_files[step] = self.apply_placeholders(file_content)
                     if step.endswith('.sql') and step.find('_gen_nsp') != -1:
-                        gen_nsp_files[step] = file_content
+                        gen_nsp_files[step] = self.apply_placeholders(file_content)
 
                     if step == 'meta_data.json':
                         meta_data = file_content

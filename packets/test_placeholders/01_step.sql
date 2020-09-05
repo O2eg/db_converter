@@ -1,0 +1,3 @@
+------------------
+CREATE USER DBC_PL_USER_NAME WITH ENCRYPTED PASSWORD 'GEN_OBJ_FLD_1';
+------------------

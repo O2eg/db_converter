@@ -38,7 +38,8 @@ class TestDBCPackets(unittest.TestCase):
                 'test_int4_to_int8',
                 'test_export_data',
                 'test_py_step',
-                'test_override_conf_param'
+                'test_override_conf_param',
+                'test_placeholders'
             ]
         ]
         packets.sort()
@@ -772,6 +773,45 @@ class TestDBCOverrideConfParam(unittest.TestCase):
 
         run_meta_test('1s', PacketStatus.EXCEPTION, ResultCode.FAIL, 'exception', 'skip_step')
         run_meta_test('1h', PacketStatus.DONE, ResultCode.SUCCESS, 'done', None)
+
+
+class TestDBCPlaceholders(unittest.TestCase):
+    conf_file = 'db_converter_test.conf'
+    packet_name = 'test_placeholders'
+    db_name = 'test_dbc_01'
+
+    def test_placeholders(self):
+        parser = DBCParams.get_arg_parser()
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--wipe',
+        ]), self.conf_file).run()
+
+        args = parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--placeholders={"USER_NAME":"dbc_test_user","PASSW":"1234"}',
+        ])
+
+        main = MainRoutine(args, self.conf_file)
+        res = main.run()
+
+        self.assertTrue(res.packet_status[self.db_name] == PacketStatus.DONE)
+        self.assertTrue(res.result_code[self.db_name] == ResultCode.SUCCESS)
+
+        db_local = postgresql.open(main.sys_conf.dbs_dict[self.db_name])
+        dbc_packets_content = get_resultset(
+            db_local,
+            """
+                SELECT count(1)
+                FROM pg_roles
+                WHERE rolcanlogin = true AND rolname = 'dbc_test_user'
+            """
+        )
+        self.assertTrue(dbc_packets_content[0][0] == 1)
+        db_local.close()
 
 
 if __name__ == '__main__':
