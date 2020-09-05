@@ -172,6 +172,12 @@ class DBCParams:
             help="Copy *.sql files from 'packets/templates/template' to 'packets/packet-name'",
             type=str
         )
+        parser.add_argument(
+            "--conf",
+            help="Override parameters of 'conf/db_converter.conf'",
+            type=str,
+            default=""
+        )
         return parser
 
     def __init__(self, args, conf):
@@ -254,6 +260,14 @@ class DBCParams:
 
             else:
                 self.matterhook = None
+
+            if hasattr(self.args, 'conf') and self.args.conf != '':
+                try:
+                    conf_json = json.loads(self.args.conf)
+                    self.sys_conf.__dict__.update(conf_json)
+                except:
+                    raise Exception('Invalid value in --conf parameter')
+
         except SystemExit as e:
             print("Exiting...")
             sys.exit(0)
@@ -557,20 +571,16 @@ class MainRoutine(DBCParams, DBCCore):
                         self.lock_observer("lock_observer_%s" % str(db_name), str_conn, db_name, self.args.packet_name)
                     )
 
-                    if self.packet_type == PacketType.READ_ONLY:
-                        self.append_thread(
+                    self.append_thread(
+                        db_name,
+                        self.worker_db_func(
+                            "manager_db_%s" % str(db_name),
+                            str_conn,
                             db_name,
-                            self.ro_worker_db_func(
-                                "ro_manager_db_%s" % str(db_name), str_conn, db_name, self.args.packet_name
-                            )
+                            self.args.packet_name,
+                            self.packet_type == PacketType.READ_ONLY
                         )
-                    else:
-                        self.append_thread(
-                            db_name,
-                            self.worker_db_func(
-                                "manager_db_%s" % str(db_name), str_conn, db_name, self.args.packet_name
-                            )
-                        )
+                    )
 
                     self.logger.log(
                         '--------> Packet \'%s\' started for \'%s\' database!' % \

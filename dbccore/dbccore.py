@@ -372,181 +372,13 @@ class DBCCore:
             )
 
     @threaded
-    def ro_worker_db_func(self, thread_name, db_conn_str, db_name, packet_name):
-        self.logger.log("Started '%s' thread for '%s' database" % (thread_name, db_name), "Info")
-        self.set_worker_status_start(db_name)
-
-        step_files = []         # vector of pairs [step, sql]
-        gen_obj_files = {}      # dict with generators of objects
-        gen_nsp_files = {}      # dict with generators of schemas
-        steps_hashes = {}       # temporary storage for executed steps
-        packet_hash = None
-        meta_data = None
-        meta_data_json = None
-
-        step_files,\
-            gen_obj_files,\
-            gen_nsp_files,\
-            packet_hash,\
-            meta_data,\
-            meta_data_json = self.parse_packet(packet_name, thread_name)
-
-        do_work = True
-        db_local = None
-        current_pid = None
-        exception_descr = None
-        th_result = False
-
-        while do_work:
-            do_work = False
-            try:
-                # check conn to DB
-                if db_local is not None:    # connection db_local has been already established
-                    self.logger.log("%s: try 'SELECT 1'" % thread_name, "Info")
-                    try:
-                        db_local.execute("SELECT 1")    # live?
-                        if current_pid not in self.get_pids(db_name):
-                            self.append_pid(db_name, current_pid)
-                    except:
-                        self.logger.log("%s: Connection to DB is broken" % thread_name, "Error")
-                        db_local.close()
-                        db_local = None     # needs reconnect
-
-                # ======================================================
-                # connecting to DB, session variables initialization
-                if db_local is None:
-                    if current_pid is not None and current_pid in self.get_pids(db_name):
-                        self.remove_pid(db_name, current_pid)
-
-                    self.logger.log("Thread '%s': connecting to '%s' database..." % (thread_name, db_name), "Info")
-                    db_local = postgresql.open(db_conn_str)
-                    db_local.execute(
-                        "SET application_name = '%s'" %
-                        (self.sys_conf.application_name + "_" + os.path.splitext(packet_name)[0])
-                    )
-
-                    self.prepare_session(db_local, meta_data_json)
-
-                    current_pid = get_scalar(db_local, "SELECT pg_backend_pid()")
-                    self.db_conns[current_pid] = db_local
-                    self.append_pid(db_name, current_pid)
-                    self.logger.log(
-                        "Thread '%s': connected to '%s' database with pid %d" %
-                        (thread_name, db_name, current_pid),
-                        "Info"
-                    )
-                # ======================================================
-                def ro_steps_processing():
-                    # return format: (result, exception_descr, do_work)
-                    for num, step in enumerate(step_files):
-                        ctx = Context(db_name, thread_name, current_pid, packet_name,
-                                      packet_hash, meta_data, meta_data_json, step)
-                        progress = str(round(float(num) * 100 / len(step_files), 2)) + "%"
-                        self.logger.log(
-                            '%s: progress %s' % (ctx.info(), progress),
-                            "Info",
-                            do_print=True
-                        )
-                        result, exception_descr = self.execute_ro_step(
-                            ctx,
-                            db_local,
-                            gen_nsp_data,
-                            gen_obj_data,
-                            steps_hashes
-                        )
-                        if result == 'exception' and exception_descr == 'connection':
-                            # transaction cancelled or connection stopped
-                            time.sleep(self.sys_conf.conn_exception_sleep_interval)
-                            return None, None, True
-                        if result == 'exception' and exception_descr == 'skip_step':
-                            self.logger.log(
-                                'Thread \'%s\' (steps_processing): step %s skipped!' %
-                                (thread_name, step[0]),
-                                "Error",
-                                do_print=True
-                            )
-                        if result == 'exception' and exception_descr is not None and \
-                                exception_descr not in('connection', 'skip_step'):
-                            return result, exception_descr, False
-                        if result == 'terminate':
-                            return 'terminate', None, False
-                    return True, None, False
-
-                # ===========================================================================
-                # read only steps processing
-                gen_obj_data = {}
-                gen_nsp_data = {}
-
-                for step, query in gen_obj_files.items():
-                    gen_obj_data[step.replace("_gen_obj", "_step")] = get_resultset(db_local, query)
-                for step, query in gen_nsp_files.items():
-                    gen_nsp_data[step.replace("_gen_nsp", "_step")] = get_resultset(db_local, query)
-
-                th_result, exception_descr, do_work = ro_steps_processing()
-                # ===========================================================================
-            except (
-                    postgresql.exceptions.QueryCanceledError,
-                    postgresql.exceptions.AdminShutdownError,
-                    postgresql.exceptions.CrashShutdownError,
-                    postgresql.exceptions.ServerNotReadyError,
-                    postgresql.exceptions.DeadlockError,
-                    AttributeError  # AttributeError: 'Statement' object has no attribute '_row_constructor'
-            ) as e:
-                if self.is_terminate:
-                    self.logger.log(
-                        "Terminated '%s' thread for '%s' database" % (thread_name, db_name),
-                        "Error",
-                        do_print=True
-                    )
-                    do_work = False
-                else:
-                    do_work = True
-                    self.logger.log(
-                        'Exception in \'%s\': %s. Reconnecting after %d sec...' %
-                        (thread_name, str(e), self.sys_conf.conn_exception_sleep_interval),
-                        "Error"
-                    )
-            except:
-                do_work = False
-                self.set_worker_result(db_name, WorkerResult.FAIL)
-                exception_descr = exception_helper(self.sys_conf.detailed_traceback)
-                msg = 'Exception in \'%s\' %s on processing packet \'%s\': \n%s' % \
-                      (thread_name, str(current_pid), packet_name, exception_descr)
-                self.logger.log(msg, "Error", do_print=True)
-
-        if db_local is not None:
-            db_local.close()
-
-        self.lock.acquire()
-        if current_pid is not None and current_pid in self.get_pids(db_name):
-            self.remove_pid(db_name, current_pid)
-        self.lock.release()
-
-        self.logger.log("Finished '%s' thread for '%s' database" % (thread_name, db_name), "Info")
-        if exception_descr is None and th_result is True:
-            self.set_worker_result(db_name, WorkerResult.SUCCESS)
-            self.logger.log(
-                '<-------- Packet \'%s\' finished for \'%s\' database!' % \
-                    (self.args.packet_name, db_name),
-                "Info",
-                do_print=True
-            )
-        else:
-            if th_result == 'terminate':
-                self.set_worker_result(db_name, WorkerResult.TERMINATE)
-            else:
-                self.set_worker_result(db_name, WorkerResult.FAIL)
-            self.logger.log(
-                '<-------- Packet \'%s\' failed for \'%s\' database!' % \
-                    (self.args.packet_name, db_name),
-                "Error",
-                do_print=True
-            )
-        self.set_worker_status_finish(db_name)
-
-    @threaded
-    def worker_db_func(self, thread_name, db_conn_str, db_name, packet_name):
-        self.logger.log("Started '%s' thread for '%s' database" % (thread_name, db_name), "Info")
+    def worker_db_func(self, thread_name, db_conn_str, db_name, packet_name, read_only):
+        self.logger.log(
+            "Started '%s' thread for '%s' database %s" % (
+                thread_name, db_name, 'in read only mode' if read_only else ''
+            ),
+            "Info"
+        )
         self.set_worker_status_start(db_name)
 
         step_files = []         # vector of pairs [step, sql]
@@ -609,7 +441,7 @@ class DBCCore:
                         "Info"
                     )
                 # ======================================================
-                if not self.args.force:
+                if not self.args.force and not read_only:
                     packet_status = ActionTracker.get_packet_status(
                         db_local, self.sys_conf.schema_location, packet_name
                     )
@@ -638,13 +470,22 @@ class DBCCore:
                                 "Info",
                                 do_print=True
                             )
-                            result, exception_descr = self.execute_step(
-                                ctx,
-                                db_local,
-                                gen_nsp_data,
-                                gen_obj_data,
-                                steps_hashes
-                            )
+                            if read_only:
+                                result, exception_descr = self.execute_ro_step(
+                                    ctx,
+                                    db_local,
+                                    gen_nsp_data,
+                                    gen_obj_data,
+                                    steps_hashes
+                                )
+                            else:
+                                result, exception_descr = self.execute_step(
+                                    ctx,
+                                    db_local,
+                                    gen_nsp_data,
+                                    gen_obj_data,
+                                    steps_hashes
+                                )
                             if result == 'exception' and exception_descr == 'connection':
                                 # transaction cancelled or connection stopped
                                 time.sleep(self.sys_conf.conn_exception_sleep_interval)
@@ -656,17 +497,27 @@ class DBCCore:
                                     "Error",
                                     do_print=True
                                 )
+                                if not read_only:
+                                    ActionTracker.set_step_exception_status(
+                                        db_local,
+                                        self.sys_conf.schema_location,
+                                        packet_name,
+                                        step[0],
+                                        exception_descr
+                                    )
                             if result == 'done' and exception_descr is None:
                                 # step successfully complete
-                                ActionTracker.set_step_status(
-                                    db_local, self.sys_conf.schema_location, packet_name, step[0], result
-                                )
+                                if not read_only:
+                                    ActionTracker.set_step_status(
+                                        db_local, self.sys_conf.schema_location, packet_name, step[0], result
+                                    )
                             if result == 'exception' and exception_descr is not None and \
                                     exception_descr not in('connection', 'skip_step'):
                                 # syntax exception or pre/post check raised exception
-                                ActionTracker.set_step_exception_status(
-                                    db_local, self.sys_conf.schema_location, packet_name, step[0], exception_descr
-                                )
+                                if not read_only:
+                                    ActionTracker.set_step_exception_status(
+                                        db_local, self.sys_conf.schema_location, packet_name, step[0], exception_descr
+                                    )
                                 return result, exception_descr, False
                             if result == 'terminate':
                                 return 'terminate', None, False
@@ -727,12 +578,18 @@ class DBCCore:
                 self.logger.log(msg, "Error", do_print=True)
 
         if not work_breaked and self.errors_count == 0:
-            ActionTracker.set_packet_status(
-                db_local, self.sys_conf.schema_location, packet_name, 'done' if exception_descr is None else 'exception'
-            )
+            if not read_only:
+                ActionTracker.set_packet_status(
+                    db_local,
+                    self.sys_conf.schema_location,
+                    packet_name,
+                    'done' if exception_descr is None else 'exception'
+                )
 
         if not work_breaked and self.errors_count > 0:
-            ActionTracker.set_packet_status(db_local, self.sys_conf.schema_location, packet_name, 'exception')
+            if not read_only:
+                ActionTracker.set_packet_status(db_local, self.sys_conf.schema_location, packet_name, 'exception')
+            self.set_worker_result(db_name, WorkerResult.FAIL)
 
         if db_local is not None:
             db_local.close()
@@ -743,7 +600,7 @@ class DBCCore:
         self.lock.release()
 
         self.logger.log("Finished '%s' thread for '%s' database" % (thread_name, db_name), "Info")
-        if exception_descr is None and th_result is True:
+        if exception_descr is None and th_result is True and self.errors_count == 0:
             self.set_worker_result(db_name, WorkerResult.SUCCESS)
             self.logger.log(
                 '<-------- Packet \'%s\' finished for \'%s\' database!' % \
@@ -1279,6 +1136,7 @@ class DBCCore:
                 )
                 time.sleep(self.sys_conf.conn_exception_sleep_interval)
                 if self.args.skip_step_cancel:
+                    self.errors_count += 1
                     return 'exception', 'skip_step'
                 elif self.args.skip_action_cancel:
                     steps_hashes[step_hash] = ctx.step[0]
@@ -1356,6 +1214,14 @@ class DBCCore:
             try:
                 # case 1: both generators is exists
                 if ctx.step[1].find("GEN_NSP_FLD_") > -1 and ctx.step[1].find("GEN_OBJ_FLD_") > -1:
+                    if ctx.step[0] not in gen_obj_data:
+                        msg = "%s: not found generator for this step, but GEN_OBJ_FLD_ is exists" % (ctx.info())
+                        self.logger.log(msg, "Error")
+                        raise Exception(msg)
+                    if ctx.step[0] not in gen_nsp_data:
+                        msg = "%s: not found generator for this step, but GEN_NSP_FLD_ is exists" % (ctx.info())
+                        self.logger.log(msg, "Error")
+                        raise Exception(msg)
                     for gen_nsp_i in gen_nsp_data[ctx.step[0]]:  # namespace generators have a major priority
                         for gen_obj_i in gen_obj_data[ctx.step[0]]:  # object generators have a minor priority
                             gen_query = parse_query_placeholder(
@@ -1390,6 +1256,10 @@ class DBCCore:
                                 # ========================================================================
                 # case 2: only OBJ generator is exists
                 if ctx.step[1].find("GEN_NSP_FLD_") == -1 and ctx.step[1].find("GEN_OBJ_FLD_") > -1:
+                    if ctx.step[0] not in gen_obj_data:
+                        msg = "%s: not found generator for this step, but GEN_OBJ_FLD_ is exists" % (ctx.info())
+                        self.logger.log(msg, "Error")
+                        raise Exception(msg)
                     for gen_obj_i in gen_obj_data[ctx.step[0]]:
                         gen_query = parse_query_placeholder(ctx.step[1], gen_obj_i, 'GEN_OBJ_FLD_')
                         step_hash = hashlib.md5(gen_query.encode()).hexdigest()
@@ -1413,6 +1283,10 @@ class DBCCore:
                         # ========================================================================
                 # case 3: only NSP generator is exists
                 if ctx.step[1].find("GEN_NSP_FLD_") > -1 and ctx.step[1].find("GEN_OBJ_FLD_") == -1:
+                    if ctx.step[0] not in gen_nsp_data:
+                        msg = "%s: not found generator for this step, but GEN_NSP_FLD_ is exists" % (ctx.info())
+                        self.logger.log(msg, "Error")
+                        raise Exception(msg)
                     for gen_nsp_i in gen_nsp_data[ctx.step[0]]:
                         gen_query = parse_query_placeholder(ctx.step[1], gen_nsp_i, 'GEN_NSP_FLD_')
                         step_hash = hashlib.md5(gen_query.encode()).hexdigest()
@@ -1480,6 +1354,7 @@ class DBCCore:
                 )
                 time.sleep(self.sys_conf.conn_exception_sleep_interval)
                 if self.args.skip_step_cancel:
+                    self.errors_count += 1
                     return 'exception', 'skip_step'
                 elif self.args.skip_action_cancel:
                     steps_hashes[step_hash] = ctx.step[0]

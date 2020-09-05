@@ -23,7 +23,10 @@ class TestDBCPackets(unittest.TestCase):
             os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
             "packets"
         )
-        for f_name in [
+        del self.wipes[:]
+        del self.runs[:]
+
+        packets = [
             f for f in os.listdir(packets_dir)
             if f.startswith('test_') and os.path.isdir(os.path.join(packets_dir, f)) and f not in [
                 'test_sleep_sigint',
@@ -34,9 +37,12 @@ class TestDBCPackets(unittest.TestCase):
                 'test_wait_tx',
                 'test_int4_to_int8',
                 'test_export_data',
-                'test_py_step'
+                'test_py_step',
+                'test_override_conf_param'
             ]
-        ]:
+        ]
+        packets.sort()
+        for f_name in packets:
             args = dict(
                 packet_name=f_name,
                 db_name='test_dbc_01',
@@ -308,8 +314,8 @@ class TestDBCSkipStepCancel(unittest.TestCase):
 
         res_2 = main.run()
 
-        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
-        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
+        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.EXCEPTION)
+        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.FAIL)
 
 
 class TestDBCSkipActionCancel(unittest.TestCase):
@@ -352,8 +358,8 @@ class TestDBCSkipActionCancel(unittest.TestCase):
 
         res_2 = main.run()
 
-        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
-        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
+        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.EXCEPTION)
+        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.FAIL)
 
 
 class TestDBCPrepareDBs(unittest.TestCase):
@@ -701,6 +707,71 @@ class TestDBCCloneSchema(unittest.TestCase):
 
         self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
         self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
+
+
+class TestDBCOverrideConfParam(unittest.TestCase):
+    conf_file = 'db_converter_test.conf'
+    packet_name = 'test_override_conf_param'
+    db_name = 'test_dbc_01'
+    schema_location = 'dbc_a'
+
+    def test_override_conf_param(self):
+        parser = DBCParams.get_arg_parser()
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--conf={"schema_location":"%s"}' % self.schema_location,
+            '--unlock',
+        ]), self.conf_file).run()
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--conf={"schema_location":"%s"}' % self.schema_location,
+            '--wipe',
+        ]), self.conf_file).run()
+
+        def run_meta_test(
+                statement_timeout,
+                packet_status,
+                result_code,
+                res_status,
+                exception_descr
+        ):
+            args = parser.parse_args([
+                '--packet-name=' + self.packet_name,
+                '--db-name=' + self.db_name,
+                '--conf={"statement_timeout":"%s","schema_location":"%s"}' % (statement_timeout, self.schema_location),
+                '--skip-step-cancel'
+            ])
+
+            main = MainRoutine(args, self.conf_file)
+            res = main.run()
+
+            self.assertTrue(res.packet_status[self.db_name] == packet_status)
+            self.assertTrue(res.result_code[self.db_name] == result_code)
+
+            db_local = postgresql.open(main.sys_conf.dbs_dict[self.db_name])
+            dbc_packets_content = get_resultset(
+                db_local,
+                """SELECT status, meta_data
+                FROM %s.dbc_packets where name = '%s'""" % (self.schema_location, self.packet_name)
+            )
+            self.assertTrue(dbc_packets_content[0][0] == res_status)
+            dbc_steps_content = get_resultset(
+                db_local,
+                """SELECT s.status, exception_descr
+                FROM %s.dbc_steps s
+                JOIN %s.dbc_packets p on p.id = s.packet_id
+                WHERE p.name = '%s'""" % (self.schema_location, self.schema_location, self.packet_name)
+            )
+            self.assertTrue(dbc_steps_content[0][0] == res_status)
+            self.assertTrue(dbc_steps_content[0][1] == exception_descr)
+            db_local.close()
+
+        run_meta_test('1s', PacketStatus.EXCEPTION, ResultCode.FAIL, 'exception', 'skip_step')
+        run_meta_test('1h', PacketStatus.DONE, ResultCode.SUCCESS, 'done', None)
 
 
 if __name__ == '__main__':

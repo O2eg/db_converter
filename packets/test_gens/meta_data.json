@@ -2,5 +2,6 @@
 	"responsible": "no name",
 	"task_id": "TASK-1",
 	"description": "test packet",
-	"tags": "test"
+	"tags": "test",
+	"type": "default"
 }
