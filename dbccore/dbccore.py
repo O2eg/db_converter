@@ -695,18 +695,10 @@ class DBCCore:
         random_password = ''.join(random_password)
         return random_password
 
-    def is_maint_query(self, query):
-        is_maint = True
-        for op in self.sys_conf.maint_ops:
-            cmds = op.split('%')
-            match = 0
-            if len(cmds) > 1:
-                for cmd in cmds:
-                    if re.search(r"\b" + re.escape(cmd) + r"\b", query):
-                        match += 1
-                if len(cmds) == match:
-                    return True
-            elif re.search(r"\b" + re.escape(op) + r"\b", query):
+    def is_non_tx_query(self, query):
+        for op in self.sys_conf.non_tx_ops:
+            found = op.search(query)
+            if found:
                 return True
         return False
 
@@ -834,7 +826,7 @@ class DBCCore:
         conn.execute('RESET search_path')
 
         try:
-            if self.is_maint_query(query.lower()):
+            if self.is_non_tx_query(query):
                 self.logger.log("%s Executing as maintenance query:\n%s" % (ctx.info(), query), "Info", do_print=True)
                 conn.execute(query)
             else:

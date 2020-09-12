@@ -18,7 +18,16 @@ VERSION = 1.2
 
 class SysConf:
     plsql_raises = ['DEBUG', 'LOG', 'INFO', 'NOTICE', 'WARNING', 'EXCEPTION']
-    maint_ops = ['index%concurrently', 'vacuum', 'analyze', 'create%database%with', 'drop%database']
+    non_tx_ops = [
+        re.compile(v, re.IGNORECASE) for v in [
+            r'^.*(\bCREATE\b|\bDROP\b)\s+(\bDATABASE\b|\bTABLESPACE\b|\bSUBSCRIPTION\b)',
+            r'^.*(\bVACUUM\b)',
+            r'^.*(\bALTER\b)\s+(\bSYSTEM\b)',
+            r'^.*(\bREINDEX\b)\s+(\bSCHEMA\b|\bDATABASE\b|\bSYSTEM\b)',
+            r'^.*(\bDISCARD\b)\s+(\bALL\b)',
+            r'^.*(\bCREATE\b|\bDROP\b)(\s*(.*)\s*)(\bINDEX\b)(\s*)(\bCONCURRENTLY\b)'
+        ]
+    ]
 
     def __init__(self, conf):
         self.current_dir = os.path.dirname(os.path.realpath(__file__))
