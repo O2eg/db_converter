@@ -7,7 +7,7 @@ import psc.postgresql as postgresql
 from actiontracker import ActionTracker
 import pyzipper
 from unittest import mock
-from test_psc import *
+# from test_psc import *
 
 
 class Struct:
