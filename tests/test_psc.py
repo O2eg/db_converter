@@ -5,7 +5,7 @@ from psc.psccommon.psc_common import *
 class TestDBCCommon(unittest.TestCase):
 
     def test_common(self):
-        limit_memory(1024 * 1000 * 500)
+        # limit_memory(1024 * 1000 * 500)
 
         current_dir = os.path.dirname(os.path.realpath(__file__))
         test_dir = os.path.join(current_dir, 'test_dir')
