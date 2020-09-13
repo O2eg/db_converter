@@ -13,7 +13,7 @@ from dbccore import *
 import shutil
 from enum import Enum
 
-VERSION = 1.2
+VERSION = 1.3
 
 
 class SysConf:
@@ -256,6 +256,18 @@ class DBCParams:
                     print("Directory %s is not exists!" % template_dir)
                     sys.exit(0)
             # ========================================================================
+            if hasattr(self.args, 'conf') and self.args.conf != '':
+                try:
+                    conf_json = json.loads(self.args.conf)
+                    self.sys_conf.__dict__.update(conf_json)
+                except:
+                    raise Exception('Invalid value in --conf parameter')
+
+            if hasattr(self.args, 'placeholders') and self.args.placeholders != '':
+                try:
+                    self.placeholders = json.loads(self.args.placeholders)
+                except:
+                    raise Exception('Invalid value in --placeholders parameter')
 
             replace_symbols = ['*', '?', ':']
             log_name_part = self.args.db_name
@@ -276,19 +288,6 @@ class DBCParams:
 
             else:
                 self.matterhook = None
-
-            if hasattr(self.args, 'conf') and self.args.conf != '':
-                try:
-                    conf_json = json.loads(self.args.conf)
-                    self.sys_conf.__dict__.update(conf_json)
-                except:
-                    raise Exception('Invalid value in --conf parameter')
-
-            if hasattr(self.args, 'placeholders') and self.args.placeholders != '':
-                try:
-                    self.placeholders = json.loads(self.args.placeholders)
-                except:
-                    raise Exception('Invalid value in --placeholders parameter')
 
         except SystemExit as e:
             print("Exiting...")
@@ -634,6 +633,11 @@ class MainRoutine(DBCParams, DBCCore):
     def run(self) -> DBCResult:
         self.logger.log('=====> DBC %s started' % VERSION, "Info", do_print=True)
 
+        self.logger.log("#--------------- Incoming parameters", "Info")
+        for arg in vars(self.args):
+            self.logger.log("#   %s = %s" % (arg, getattr(self.args, arg)), "Info")
+        self.logger.log("#-----------------------------------", "Info")
+
         # ========================================================================
         # confirmation
         break_deployment = False
@@ -697,7 +701,7 @@ class MainRoutine(DBCParams, DBCCore):
                     self.packet_status[db] = PacketStatus.STARTED
 
         self.logger.log('<===== DBC %s finished' % VERSION, "Info", do_print=True)
-        PSCLogger.instance().stop()
+        self.logger.stop()
 
         result = DBCResult()
         result.command_type = self.command_type

@@ -1,1 +1,0 @@
-PSC_DEBUG = False

@@ -843,6 +843,12 @@ class TestDBCAllSeq(unittest.TestCase):
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
             '--db-name=' + self.db_name,
+            '--unlock',
+        ]), self.conf_file).run()
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
             '--wipe',
         ]), self.conf_file).run()
 
@@ -855,7 +861,7 @@ class TestDBCAllSeq(unittest.TestCase):
         args = parser.parse_args([
             '--packet-name=' + self.packet_name,
             '--db-name=' + self.db_name,
-            '--conf={"log_level":"Debug"}',
+            '--conf={"log_level":"Debug", "log_sql": "True"}',
         ])
 
         main = MainRoutine(args, self.conf_file)

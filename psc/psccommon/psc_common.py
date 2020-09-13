@@ -5,7 +5,6 @@ import json
 import decimal
 import datetime
 import traceback
-from psc import PSC_DEBUG
 import signal
 
 

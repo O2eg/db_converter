@@ -685,6 +685,7 @@ class DBCCore:
                                 username=ctx.meta_data_json["hook"]["username"]
                                 if "username" in ctx.meta_data_json["hook"] else "db_converter"
                             )
+                            self.logger.log('"resultset_hook":\n%s' % msg, "Debug", do_print=True)
         except:
             exception_descr = exception_helper(self.sys_conf.detailed_traceback)
             self.logger.log(
