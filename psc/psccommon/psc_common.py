@@ -47,84 +47,6 @@ def prepare_dirs(current_dir, dirs=['log', 'download']):
             os.makedirs(os.path.join(current_dir, v))
 
 
-class AppFileLock:
-    do_unlock = True
-    app_name = None
-    __instance = None
-
-    @staticmethod
-    def instance():
-        if AppFileLock.__instance is None:
-            AppFileLock("AppFileLock")
-        return AppFileLock.__instance
-
-    def __init__(self, directory, application_name):
-        self.app_name = application_name
-        self.directory = directory
-        AppFileLock.__instance = self
-        self.tornado_is_exists = False
-        self.threads = None
-        import atexit
-        import signal
-        try:
-            from tornado.ioloop import IOLoop
-            self.tornado_is_exists = True
-        except ImportError:
-            if PSC_DEBUG:
-                print("Failed: import IOLoop")
-
-        from psc.psclogger.psc_logger import PSCLogger
-
-        # on kill do unlock
-        @atexit.register
-        def unlock():
-            if AppFileLock.instance().do_unlock:
-                try:
-                    AppFileLock.instance().do_unlock = False
-                    if PSC_DEBUG:
-                        print("{} stopping...".format(AppFileLock.instance().app_name))
-                    fname = os.path.join(directory, AppFileLock.instance().app_name + ".lock")
-                    if os.path.isfile(fname):
-                        os.remove(fname)
-                except IOError:
-                    print("can't unlock " + AppFileLock.instance().app_name + ".lock")
-                finally:
-                    if PSC_DEBUG:
-                        print("Stoppping all threads...")
-                    if AppFileLock.instance().threads is not None:
-                        for thread in AppFileLock.instance().threads:
-                            if thread.is_alive():
-                                try:
-                                    thread.stop()
-                                except SystemExit:
-                                    if PSC_DEBUG:
-                                        print("except SystemExit")
-
-                    PSCLogger.instance().log("PSCLogger stopping from AppFileLock", "Info")
-                    if AppFileLock.instance().tornado_is_exists: IOLoop.instance().stop()
-                    PSCLogger.instance().stop()
-                    if PSC_DEBUG:
-                        print("{} stopped!".format(AppFileLock.instance().app_name))
-                    sys.exit(0)
-
-        def handler(signum, frame):
-            unlock()
-
-        signal.signal(signal.SIGTERM, handler)
-        if os.path.isfile(os.path.join(directory, application_name + ".lock")):
-            sys.stderr.write("{} already started!".format(application_name))
-            self.do_unlock = False
-            if AppFileLock.instance().tornado_is_exists: IOLoop.instance().stop()
-            PSCLogger.instance().stop()
-            sys.exit(0)
-        else:
-            try:
-                fd = os.open(os.path.join(directory, application_name + ".lock"), os.O_CREAT | os.O_EXCL)
-                os.close(fd)
-            except IOError:
-                print("Can't open {}.lock".format(application_name))
-
-
 class SignalHandler(object):
     tornado_is_exists = False
 
@@ -158,48 +80,6 @@ class SignalHandler(object):
         signal.signal(self.sigint, self.handler_sigint)
         self.released = True
         return True
-
-    # This method should be used if AppFileLock is created
-    def unlock(self):
-        from psc.psclogger.psc_logger import PSCLogger
-        try:
-            from tornado.ioloop import IOLoop
-            self.tornado_is_exists = True
-        except ImportError:
-            if PSC_DEBUG:
-                print("Failed: import IOLoop")
-
-        afli = AppFileLock.instance()
-        cn = self.__class__.__name__
-        try:
-            if PSC_DEBUG:
-                print("%s: %s stopping..." % (cn, afli.app_name))
-            fname = os.path.join(afli.directory, afli.app_name + ".lock")
-            if os.path.isfile(fname):
-                os.remove(fname)
-        except IOError:
-            print("%s: can't unlock %s.lock" % (cn, afli.app_name))
-        finally:
-            if PSC_DEBUG:
-                print("%s: Stoppping all threads..." % cn)
-            if afli.threads is not None:
-                for thread in afli.threads:
-                    if thread.is_alive():
-                        try:
-                            thread.stop()
-                        except SystemExit:
-                            if PSC_DEBUG:
-                                print("except SystemExit")
-
-            PSCLogger.instance().log("%s: PSCLogger stopping..." % cn, "Info", do_print=True)
-            if afli.tornado_is_exists: IOLoop.instance().stop()
-            PSCLogger.instance().stop()
-            if PSC_DEBUG:
-                print("%s: %s stopped!" % (cn, afli.app_name))
-            try:
-                sys.exit(0)
-            except SystemExit:
-                pass
 
 
 def to_json(obj, formatted=False):

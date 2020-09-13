@@ -28,16 +28,16 @@ class Webhook(object):
         self.username = username
         self.url = url
 
-    def __setitem__(self, channel, payload):
-        if isinstance(payload, dict):
-            try:
-                message = payload.pop('text')
-            except KeyError:
-                raise InvalidPayload('missing "text" key')
-        else:
-            message = payload
-            payload = {}
-        self.send(message, **payload)
+    # def __setitem__(self, channel, payload):
+    #     if isinstance(payload, dict):
+    #         try:
+    #             message = payload.pop('text')
+    #         except KeyError:
+    #             raise InvalidPayload('missing "text" key')
+    #     else:
+    #         message = payload
+    #         payload = {}
+    #     self.send(message, **payload)
 
     @property
     def incoming_hook_url(self):
