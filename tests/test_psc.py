@@ -1,6 +1,5 @@
 import unittest
 from psc.psccommon.psc_common import *
-import time
 
 
 class TestDBCCommon(unittest.TestCase):
