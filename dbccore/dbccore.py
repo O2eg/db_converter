@@ -674,7 +674,7 @@ class DBCCore:
                     if any_item:
                         if ctx.meta_data_json["hook"]["channel"] not in self.matterhooks:
                             self.logger.log(
-                                '"resultset_hook": Channel "%s" not found!' % (ctx.meta_data_json["hook"]["channel"]),
+                                'resultset_hook: Channel "%s" not found!' % (ctx.meta_data_json["hook"]["channel"]),
                                 "Error",
                                 do_print=True
                             )
@@ -1185,12 +1185,19 @@ class DBCCore:
                             msg += '%s = %s\n' % (arg, getattr(self.args, arg))
                         msg += "```"
 
-                    self.matterhooks[ctx.meta_data_json["hook"]["channel"]].send(
-                        msg,
-                        channel=ctx.meta_data_json["hook"]["channel"],
-                        username=ctx.meta_data_json["hook"]["username"]
-                        if "username" in ctx.meta_data_json["hook"] else "db_converter"
-                    )
+                    if ctx.meta_data_json["hook"]["channel"] not in self.matterhooks:
+                        self.logger.log(
+                            'raise_error_logic: Channel "%s" not found!' % (ctx.meta_data_json["hook"]["channel"]),
+                            "Error",
+                            do_print=True
+                        )
+                    else:
+                        self.matterhooks[ctx.meta_data_json["hook"]["channel"]].send(
+                            msg,
+                            channel=ctx.meta_data_json["hook"]["channel"],
+                            username=ctx.meta_data_json["hook"]["username"]
+                            if "username" in ctx.meta_data_json["hook"] else "db_converter"
+                        )
         except:
             exception_descr = exception_helper(self.sys_conf.detailed_traceback)
             self.logger.log(
