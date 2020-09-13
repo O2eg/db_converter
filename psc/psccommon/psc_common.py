@@ -12,8 +12,8 @@ import signal
 def limit_memory(maxsize):
     try:
         import resource
-        soft, hard = resource.getrlimit(resource.RLIMIT_AS)
-        resource.setrlimit(resource.RLIMIT_AS, (maxsize, hard))
+        soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
+        resource.setrlimit(resource.RLIMIT_DATA, (maxsize, hard))
     except ImportError:
         print("Failed: import resource")
 
