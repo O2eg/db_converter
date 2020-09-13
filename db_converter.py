@@ -1,8 +1,8 @@
 import time
 import configparser
 import argparse
-from psc.pgstatlogger.pg_stat_logger import PSCLogger
-from psc.pgstatcommon.pg_stat_common import *
+from psc.psclogger.psc_logger import PSCLogger
+from psc.psccommon.psc_common import *
 from psc.postgresql import exceptions
 import psc.postgresql as postgresql
 import logging

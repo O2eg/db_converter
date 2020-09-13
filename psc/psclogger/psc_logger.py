@@ -4,7 +4,7 @@ import logging
 import logging.handlers
 import time
 from psc import PSC_DEBUG
-from psc.pgstatcommon.pg_stat_common import *
+from psc.psccommon.psc_common import *
 
 
 class PSCLogger(Thread):

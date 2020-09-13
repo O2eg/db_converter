@@ -73,7 +73,7 @@ class AppFileLock:
             if PSC_DEBUG:
                 print("Failed: import IOLoop")
 
-        from psc.pgstatlogger.pg_stat_logger import PSCLogger
+        from psc.psclogger.psc_logger import PSCLogger
 
         # on kill do unlock
         @atexit.register
@@ -161,7 +161,7 @@ class SignalHandler(object):
 
     # This method should be used if AppFileLock is created
     def unlock(self):
-        from psc.pgstatlogger.pg_stat_logger import PSCLogger
+        from psc.psclogger.psc_logger import PSCLogger
         try:
             from tornado.ioloop import IOLoop
             self.tornado_is_exists = True

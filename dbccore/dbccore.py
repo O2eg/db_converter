@@ -1,4 +1,4 @@
-from psc.pgstatcommon.pg_stat_common import *
+from psc.psccommon.psc_common import *
 import psc.postgresql as postgresql
 import threading
 import time
