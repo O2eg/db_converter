@@ -127,7 +127,7 @@ class DBCCore:
     def get_threads(self, db_name):
         return self.worker_threads[db_name]
 
-    def get_num_observed_threads_(self, db_name):
+    def get_num_observed_threads(self, db_name):
         return self.worker_threads[db_name].num_observed_threads
 
     def get_worker_status(self, db_name):
@@ -672,12 +672,19 @@ class DBCCore:
                                 any_item = True
 
                     if any_item:
-                        self.matterhooks[ctx.meta_data_json["hook"]["channel"]].send(
-                            msg,
-                            channel=ctx.meta_data_json["hook"]["channel"],
-                            username=ctx.meta_data_json["hook"]["username"]
-                            if "username" in ctx.meta_data_json["hook"] else "db_converter"
-                        )
+                        if ctx.meta_data_json["hook"]["channel"] not in self.matterhooks:
+                            self.logger.log(
+                                '"resultset_hook": Channel "%s" not found!' % (ctx.meta_data_json["hook"]["channel"]),
+                                "Error",
+                                do_print=True
+                            )
+                        else:
+                            self.matterhooks[ctx.meta_data_json["hook"]["channel"]].send(
+                                msg,
+                                channel=ctx.meta_data_json["hook"]["channel"],
+                                username=ctx.meta_data_json["hook"]["username"]
+                                if "username" in ctx.meta_data_json["hook"] else "db_converter"
+                            )
         except:
             exception_descr = exception_helper(self.sys_conf.detailed_traceback)
             self.logger.log(

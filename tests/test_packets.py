@@ -6,11 +6,18 @@ from db_converter import *
 import psc.postgresql as postgresql
 from actiontracker import ActionTracker
 import pyzipper
+from unittest import mock
 
 
 class Struct:
     def __init__(self, **entries):
         self.__dict__.update(entries)
+
+
+def mocked_requests_post(*args, **kwargs):
+    class Response:
+        status_code = 200
+    return Response()
 
 
 class TestDBCPackets(unittest.TestCase):
@@ -39,7 +46,8 @@ class TestDBCPackets(unittest.TestCase):
                 'test_export_data',
                 'test_py_step',
                 'test_override_conf_param',
-                'test_placeholders'
+                'test_placeholders',
+                'test_get_version'
             ]
         ]
         packets.sort()
@@ -76,7 +84,8 @@ class TestDBCPackets(unittest.TestCase):
                 ResultCode.SUCCESS if f_name.find('exception') == -1 else ResultCode.FAIL
             ])
 
-    def test_packets(self):
+    @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
+    def test_packets(self, mocked_requests_post):
         for args in self.wipes:
             res = MainRoutine(args, self.conf_file).run()
             self.assertTrue(
@@ -133,7 +142,8 @@ class TestDBCLock(unittest.TestCase):
 
         self.run_params = Struct(**run_args)
 
-    def test_lock(self):
+    @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
+    def test_lock(self, mocked_requests_post):
         dbc = MainRoutine(self.wipe_params, self.conf_file)
         res_1 = dbc.run()
         self.assertTrue(res_1.packet_status[self.db_name] == PacketStatus.NEW)
@@ -159,7 +169,8 @@ class TestDBCLockKey(unittest.TestCase):
     packet_name = 'test_sleep'
     db_name = 'test_dbc_01'
 
-    def test_lock(self):
+    @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
+    def test_lock(self, mocked_requests_post):
         parser = DBCParams.get_arg_parser()
         args = parser.parse_args(['--packet-name=' + self.packet_name, '--db-name=' + self.db_name])
         dbc = MainRoutine(args, self.conf_file)
@@ -185,7 +196,8 @@ class TestDBCSignal(unittest.TestCase):
     packet_name = 'test_sleep_sigint'
     db_name = 'test_dbc_01'
 
-    def test_sigint(self):
+    @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
+    def test_sigint(self, mocked_requests_post):
         parser = DBCParams.get_arg_parser()
         args = parser.parse_args(['--packet-name=' + self.packet_name, '--db-name=' + self.db_name])
 
@@ -409,7 +421,8 @@ class TestDBCBlockerTxTimeout(unittest.TestCase):
     packet_name = 'test_blocker_tx'
     db_name = 'test_dbc_01'
 
-    def test_blocker_tx(self):
+    @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
+    def test_blocker_tx(self, mocked_requests_post):
         parser = DBCParams.get_arg_parser()
         args = parser.parse_args([
             '--packet-name=' + self.packet_name,
@@ -445,7 +458,8 @@ class TestDBCWaitTxTimeout(unittest.TestCase):
     packet_name = 'test_wait_tx'
     db_name = 'test_dbc_01'
 
-    def test_wait_tx(self):
+    @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
+    def test_wait_tx(self, mocked_requests_post):
         parser = DBCParams.get_arg_parser()
         args = parser.parse_args([
             '--packet-name=' + self.packet_name,
@@ -569,7 +583,8 @@ class TestDBCAlertAndDBAPackets(unittest.TestCase):
             )
             self.runs.append(Struct(**args))
 
-    def test_packets(self):
+    @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
+    def test_packets(self, mocked_requests_post):
         parser = DBCParams.get_arg_parser()
         args = parser.parse_args(['--packet-name=dba_get_version', '--db-name=' + self.db_name])
         dbc = MainRoutine(args, self.conf_file)
@@ -812,6 +827,41 @@ class TestDBCPlaceholders(unittest.TestCase):
         )
         self.assertTrue(dbc_packets_content[0][0] == 1)
         db_local.close()
+
+
+class TestDBCAllSeq(unittest.TestCase):
+    conf_file = 'db_converter_test.conf'
+    packet_name = 'test_get_version'
+    db_name = 'ALL,exclude:test_dbc_01,pg_db'
+    target_db = 'test_dbc_02'
+
+    @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
+    def test_all_seq(self, mocked_requests_post):
+        parser = DBCParams.get_arg_parser()
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--wipe',
+        ]), self.conf_file).run()
+
+        MainRoutine(parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--list',
+        ]), self.conf_file).run()
+
+        args = parser.parse_args([
+            '--packet-name=' + self.packet_name,
+            '--db-name=' + self.db_name,
+            '--conf={"log_level":"Debug"}',
+        ])
+
+        main = MainRoutine(args, self.conf_file)
+        res = main.run()
+
+        self.assertTrue(res.packet_status[self.target_db] == PacketStatus.DONE)
+        self.assertTrue(res.result_code[self.target_db] == ResultCode.SUCCESS)
 
 
 if __name__ == '__main__':

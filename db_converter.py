@@ -550,6 +550,7 @@ class MainRoutine(DBCParams, DBCCore):
                 print("=====> Database '%s', packet '%s' data not found!" % (db_name, self.args.packet_name))
             self.packet_status[db_name] = PacketStatus.NEW
         elif self.args.wipe:
+            print("=====> Database '%s', packet '%s' nothing to wipe!" % (db_name, self.args.packet_name))
             self.result_code[db_name] = ResultCode.NOTHING_TODO
             self.packet_status[db_name] = PacketStatus.NEW
         # ================================================================================================
