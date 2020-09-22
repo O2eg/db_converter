@@ -53,7 +53,7 @@ class SysConf:
 
         # main parameters
         self.application_name = get_key('main', 'application_name', 'db_converter')
-        self.execute_sql = get_key('main', 'execute_sql', 'True')
+        self.execute_sql = get_key('main', 'execute_sql', 'True', boolean=True)
         self.lock_observer_sleep_interval = int(
             get_key('main', 'lock_observer_sleep_interval', '5')
         )
@@ -258,7 +258,12 @@ class DBCParams:
             # ========================================================================
             if hasattr(self.args, 'conf') and self.args.conf != '':
                 try:
-                    conf_json = json.loads(self.args.conf)
+                    conf_json = json.loads(self.args.conf.replace("""\'""", "\""))
+                    for key, value in conf_json.items():
+                        if key in ('execute_sql', 'detailed_traceback', 'db_name_all_confirmation'):
+                            conf_json[key] = read_conf_param_value(value, boolean=True)
+                        if key in ('cancel_wait_tx_timeout', 'cancel_blocker_tx_timeout'):
+                            conf_json[key] = """'%s'""" % read_conf_param_value(value)
                     self.sys_conf.__dict__.update(conf_json)
                 except:
                     raise Exception('Invalid value in --conf parameter')
@@ -625,8 +630,20 @@ class MainRoutine(DBCParams, DBCCore):
             if ActionTracker.is_packet_locked(db_conn, self.sys_conf.schema_location, self.args.packet_name):
                 ActionTracker.set_packet_unlock(db_conn, self.sys_conf.schema_location, self.args.packet_name)
                 self.result_code[db_name] = ResultCode.SUCCESS
+                self.logger.log(
+                    '--------> Packet \'%s\' has been unlocked in \'%s\' database!' % \
+                    (self.args.packet_name, db_name),
+                    "Info",
+                    do_print=True
+                )
             else:
                 self.result_code[db_name] = ResultCode.NOTHING_TODO
+                self.logger.log(
+                    '--------> Packet \'%s\' not locked in \'%s\' database!' % \
+                    (self.args.packet_name, db_name),
+                    "Info",
+                    do_print=True
+                )
 
         db_conn.close()
 

@@ -939,6 +939,19 @@ class DBCCore:
                                 )
                             else:
                                 # ========================================================================
+                                if gen_nsp_i[0] is not None and len(str(gen_nsp_i[0])) > 0:  # run maintenance command
+                                    if self.sys_conf.log_sql == 1:
+                                        self.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
+                                    if self.sys_conf.execute_sql:
+                                        self.execute_q(ctx, db_local, gen_nsp_i[0])
+
+                                if gen_obj_i[0] is not None and len(str(gen_obj_i[0])) > 0:  # run maintenance command
+                                    gen_obj_i_query = parse_query_placeholder(gen_obj_i[0], gen_nsp_i, 'GEN_NSP_FLD_')
+                                    if self.sys_conf.log_sql == 1:
+                                        self.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i_query), "Info")
+                                    if self.sys_conf.execute_sql:
+                                        self.execute_q(ctx, db_local, gen_obj_i_query)
+                                # ========================================================================
                                 if self.sys_conf.log_sql == 1:
                                     self.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
                                 if self.sys_conf.execute_sql:
@@ -962,18 +975,6 @@ class DBCCore:
                                         )
                                     steps_hashes[step_hash] = ctx.step[0]
                                     self.logger.log("%s: action finished" % (ctx.info()), "Info")
-
-                                if gen_nsp_i[0] is not None and len(str(gen_nsp_i[0])) > 0:  # run maintenance command
-                                    if self.sys_conf.log_sql == 1:
-                                        self.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
-                                    if self.sys_conf.execute_sql:
-                                        self.execute_q(ctx, db_local, gen_nsp_i[0])
-
-                                if gen_obj_i[0] is not None and len(str(gen_obj_i[0])) > 0:  # run maintenance command
-                                    if self.sys_conf.log_sql == 1:
-                                        self.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i[0]), "Info")
-                                    if self.sys_conf.execute_sql:
-                                        self.execute_q(ctx, db_local, gen_obj_i[0])
                                 # ========================================================================
                 # case 2: only OBJ generator is exists
                 if ctx.step[1].find("GEN_NSP_FLD_") == -1 and ctx.step[1].find("GEN_OBJ_FLD_") > -1:
@@ -1000,6 +1001,12 @@ class DBCCore:
                             )
                         else:
                             # ========================================================================
+                            if gen_obj_i[0] is not None and len(str(gen_obj_i[0])) > 0:  # run maintenance command
+                                if self.sys_conf.log_sql == 1:
+                                    self.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i[0]), "Info")
+                                if self.sys_conf.execute_sql:
+                                    self.execute_q(ctx, db_local, gen_obj_i[0])
+                            # ========================================================================
                             if self.sys_conf.log_sql == 1:
                                 self.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
                             if self.sys_conf.execute_sql:
@@ -1023,13 +1030,6 @@ class DBCCore:
                                     )
                                 steps_hashes[step_hash] = ctx.step[0]
                                 self.logger.log("%s: action finished" % (ctx.info()), "Info")
-
-                            if gen_obj_i[0] is not None and len(str(gen_obj_i[0])) > 0:  # run maintenance command
-                                if self.sys_conf.log_sql == 1:
-                                    self.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i[0]), "Info")
-                                if self.sys_conf.execute_sql:
-                                    self.execute_q(ctx, db_local, gen_obj_i[0])
-
                             # ========================================================================
                 # case 3: only NSP generator is exists
                 if ctx.step[1].find("GEN_NSP_FLD_") > -1 and ctx.step[1].find("GEN_OBJ_FLD_") == -1:
@@ -1049,6 +1049,12 @@ class DBCCore:
                             self.logger.log("%s: action already executed with hash %s" % (ctx.info(), step_hash), "Info")
                         else:
                             # ========================================================================
+                            if gen_nsp_i[0] is not None and len(str(gen_nsp_i[0])) > 0:  # run maintenance command
+                                if self.sys_conf.log_sql == 1:
+                                    self.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
+                                if self.sys_conf.execute_sql:
+                                    self.execute_q(ctx, db_local, gen_nsp_i[0])
+                            # ========================================================================
                             if self.sys_conf.log_sql == 1:
                                 self.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
                             if self.sys_conf.execute_sql:
@@ -1066,12 +1072,6 @@ class DBCCore:
                                 )
                                 steps_hashes[step_hash] = ctx.step[0]
                                 self.logger.log("%s: action finished" % (ctx.info()), "Info")
-
-                            if gen_nsp_i[0] is not None and len(str(gen_nsp_i[0])) > 0:  # run maintenance command
-                                if self.sys_conf.log_sql == 1:
-                                    self.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
-                                if self.sys_conf.execute_sql:
-                                    self.execute_q(ctx, db_local, gen_nsp_i[0])
                             # ========================================================================
                 # case 4: no generators
                 if ctx.step[1].find("GEN_NSP_FLD_") == -1 and ctx.step[1].find("GEN_OBJ_FLD_") == -1:
@@ -1243,7 +1243,19 @@ class DBCCore:
                             step_hash = hashlib.md5(gen_query.encode()).hexdigest()
                             if step_hash in steps_hashes:
                                 continue
+                            # ========================================================================
+                            if gen_nsp_i[0] is not None and len(str(gen_nsp_i[0])) > 0:  # run maintenance command
+                                if self.sys_conf.log_sql == 1:
+                                    self.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
+                                if self.sys_conf.execute_sql:
+                                    execute_ro(db_local, gen_nsp_i[0])
 
+                            if gen_obj_i[0] is not None and len(str(gen_obj_i[0])) > 0:  # run maintenance command
+                                gen_obj_i_query = parse_query_placeholder(gen_obj_i[0], gen_nsp_i, 'GEN_NSP_FLD_')
+                                if self.sys_conf.log_sql == 1:
+                                    self.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i_query), "Info")
+                                if self.sys_conf.execute_sql:
+                                    self.execute_ro(ctx, db_local, gen_obj_i_query)
                             # ========================================================================
                             if self.sys_conf.log_sql == 1:
                                 self.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
@@ -1251,21 +1263,7 @@ class DBCCore:
                                 execute_ro(db_local, gen_query)
                                 steps_hashes[step_hash] = ctx.step[0]
                                 self.logger.log("%s: action finished" % (ctx.info()), "Info")
-
-                            if gen_nsp_i[0] is not None and len(str(gen_nsp_i[0])) > 0:  # run maintenance command
-                                if self.sys_conf.log_sql == 1:
-                                    self.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
-
-                                if self.sys_conf.execute_sql:
-                                    execute_ro(db_local, gen_nsp_i[0])
-
-                            if gen_obj_i[0] is not None and len(str(gen_obj_i[0])) > 0:  # run maintenance command
-                                if self.sys_conf.log_sql == 1:
-                                    self.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i[0]), "Info")
-
-                                if self.sys_conf.execute_sql:
-                                    execute_ro(db_local, gen_obj_i[0])
-                                # ========================================================================
+                            # ========================================================================
                 # case 2: only OBJ generator is exists
                 if ctx.step[1].find("GEN_NSP_FLD_") == -1 and ctx.step[1].find("GEN_OBJ_FLD_") > -1:
                     if ctx.step[0] not in gen_obj_data:
@@ -1277,7 +1275,12 @@ class DBCCore:
                         step_hash = hashlib.md5(gen_query.encode()).hexdigest()
                         if step_hash in steps_hashes:
                             continue
-
+                        # ========================================================================
+                        if gen_obj_i[0] is not None and len(str(gen_obj_i[0])) > 0:  # run maintenance command
+                            if self.sys_conf.log_sql == 1:
+                                self.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i[0]), "Info")
+                            if self.sys_conf.execute_sql:
+                                execute_ro(db_local, gen_obj_i[0])
                         # ========================================================================
                         if self.sys_conf.log_sql == 1:
                             self.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
@@ -1286,12 +1289,6 @@ class DBCCore:
                             execute_ro(db_local, gen_query)
                             steps_hashes[step_hash] = ctx.step[0]
                             self.logger.log("%s: action finished" % (ctx.info()), "Info")
-
-                        if gen_obj_i[0] is not None and len(str(gen_obj_i[0])) > 0:  # run maintenance command
-                            if self.sys_conf.log_sql == 1:
-                                self.logger.log("%s:\n%s" % (ctx.info(), gen_obj_i[0]), "Info")
-                            if self.sys_conf.execute_sql:
-                                execute_ro(db_local, gen_obj_i[0])
                         # ========================================================================
                 # case 3: only NSP generator is exists
                 if ctx.step[1].find("GEN_NSP_FLD_") > -1 and ctx.step[1].find("GEN_OBJ_FLD_") == -1:
@@ -1304,7 +1301,13 @@ class DBCCore:
                         step_hash = hashlib.md5(gen_query.encode()).hexdigest()
                         if step_hash in steps_hashes:
                             continue
+                        # ========================================================================
+                        if gen_nsp_i[0] is not None and len(str(gen_nsp_i[0])) > 0:  # run maintenance command
+                            if self.sys_conf.log_sql == 1:
+                                self.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
 
+                            if self.sys_conf.execute_sql:
+                                execute_ro(db_local, gen_nsp_i[0])
                         # ========================================================================
                         if self.sys_conf.log_sql == 1:
                             self.logger.log("%s:\n%s" % (ctx.info(), gen_query), "Info")
@@ -1313,27 +1316,20 @@ class DBCCore:
                             execute_ro(db_local, gen_query)
                             steps_hashes[step_hash] = ctx.step[0]
                             self.logger.log("%s: action finished" % (ctx.info()), "Info")
-
-                        if gen_nsp_i[0] is not None and len(str(gen_nsp_i[0])) > 0:  # run maintenance command
-                            if self.sys_conf.log_sql == 1:
-                                self.logger.log("%s:\n%s" % (ctx.info(), gen_nsp_i[0]), "Info")
-
-                            if self.sys_conf.execute_sql:
-                                execute_ro(db_local, gen_nsp_i[0])
                         # ========================================================================
                 # case 4: no generators
                 if ctx.step[1].find("GEN_NSP_FLD_") == -1 and ctx.step[1].find("GEN_OBJ_FLD_") == -1:
                     step_hash = hashlib.md5(ctx.step[1].encode()).hexdigest()
                     if step_hash not in steps_hashes:
-                            # ========================================================================
-                            if self.sys_conf.log_sql == 1:
-                                self.logger.log("%s:\n%s" % (ctx.info(), ctx.step[1]), "Info")
+                        # ========================================================================
+                        if self.sys_conf.log_sql == 1:
+                            self.logger.log("%s:\n%s" % (ctx.info(), ctx.step[1]), "Info")
 
-                            if self.sys_conf.execute_sql:
-                                execute_ro(db_local, ctx.step[1])
-                                steps_hashes[step_hash] = ctx.step[0]
-                                self.logger.log("%s: action finished" % (ctx.info()), "Info")
-                            # ========================================================================
+                        if self.sys_conf.execute_sql:
+                            execute_ro(db_local, ctx.step[1])
+                            steps_hashes[step_hash] = ctx.step[0]
+                            self.logger.log("%s: action finished" % (ctx.info()), "Info")
+                        # ========================================================================
             except (
                     postgresql.exceptions.PLPGSQLRaiseError,
                     postgresql.exceptions.ReadOnlyTransactionError
