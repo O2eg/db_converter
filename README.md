@@ -170,11 +170,11 @@ In all deployment modes two parameters are mandatory:
 # Documentation
 
 <!--ts-->
-   * [Files layout](https://github.com/masterlee998/db_converter/wiki/Files-layout-and-configuration)
+   * [Files layout and configuration](https://github.com/masterlee998/db_converter/wiki/Files-layout-and-configuration)
    * [Command-line parameters](https://github.com/masterlee998/db_converter/wiki/Command-line-parameters)
    * [Action tracker](https://github.com/masterlee998/db_converter/wiki/Action-tracker)
    * [meta_data.json description](https://github.com/masterlee998/db_converter/wiki/meta_data.json-description)
-   * [Generators and Placeholders](https://github.com/masterlee998/db_converter/wiki/Generators-and-Placeholders)
+   * [Transactional processing of objects and data](https://github.com/masterlee998/db_converter/wiki/Transactional-processing-of-objects-and-data)
    * [Threads](https://github.com/masterlee998/db_converter/wiki/Threads)
    * [Use cases](https://github.com/masterlee998/db_converter/wiki/Use-cases)
 <!--te-->
