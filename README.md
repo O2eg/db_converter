@@ -161,6 +161,10 @@ Auxiliary deployment modes are also provided:
 
 * **Skip action errors** like `Deadlock`, `QueryCanceledError` if the `--skip-action-cancel` key is specified
 
+<p align="center">
+  <img src="doc/dbc_aux_modes.png">
+</p>
+
 In all deployment modes two parameters are mandatory:
 
 * `--db-name` - name of directory located in `packets`
