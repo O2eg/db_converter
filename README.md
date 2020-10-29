@@ -180,6 +180,7 @@ In all deployment modes two parameters are mandatory:
    * [meta_data.json description](https://github.com/masterlee998/db_converter/wiki/meta_data.json-description)
    * [Transactional processing of objects and data](https://github.com/masterlee998/db_converter/wiki/Transactional-processing-of-objects-and-data)
    * [Threads](https://github.com/masterlee998/db_converter/wiki/Threads)
+   * [Internals](https://github.com/masterlee998/db_converter/wiki/Internals)
    * [Use cases](https://github.com/masterlee998/db_converter/wiki/Use-cases)
 <!--te-->
 
