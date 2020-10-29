@@ -491,7 +491,7 @@ class DBCCore:
                                     gen_obj_data,
                                     steps_hashes
                                 )
-                            if result == 'exception' and exception_descr == 'connection':
+                            if result == 'exception' and exception_descr in ('connection', 'deadlock_detected'):
                                 # transaction cancelled or connection stopped
                                 time.sleep(self.sys_conf.conn_exception_sleep_interval)
                                 return None, None, True
