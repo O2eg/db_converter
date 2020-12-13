@@ -1,4 +1,4 @@
-SELECT format('Low number of free connections: %s (%s) [max_connections = %s]', T.c, T.v || '%', T.s)
+SELECT format('Low number of free connections: %s (%s) [max_connections = %s]', T.c, T.v || '%', T.s) as alert
 FROM (
 	SELECT
 		round(((select count(1) from pg_stat_activity) * 100)::numeric / setting::integer, 2) as v,

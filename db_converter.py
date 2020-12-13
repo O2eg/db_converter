@@ -197,11 +197,13 @@ class DBCParams:
         return parser
 
     def __init__(self, args, conf):
+        self.is_exit = False
         try:
             if args is None:
                 try:
                     self.args = self.get_arg_parser().parse_args()
                 except SystemExit:
+                    self.is_exit = True
                     sys.exit(0)
                 except:
                     print(exception_helper())
@@ -209,12 +211,24 @@ class DBCParams:
 
                 if not len(sys.argv) > 1:
                     print("No arguments. Type -h for help.")
+                    self.is_exit = True
                     sys.exit(0)
             else:
                 self.args = args
 
             if hasattr(self.args, 'version') and self.args.version:
                 print("Version %s" % VERSION)
+                self.is_exit = True
+                sys.exit(0)
+
+            if self.args.packet_name is None:
+                print("Argument --packet-name not found!")
+                self.is_exit = True
+                sys.exit(0)
+
+            if self.args.db_name is None:
+                print("Argument --db-name not found!")
+                self.is_exit = True
                 sys.exit(0)
 
             self.sys_conf = SysConf(conf)
@@ -222,14 +236,17 @@ class DBCParams:
             packet_dir = os.path.join(self.sys_conf.current_dir, 'packets', self.args.packet_name)
             if not os.path.isdir(packet_dir) or len(self.args.packet_name) == 0:
                 print("Invalid --packet-name=%s" % self.args.packet_name)
+                self.is_exit = True
                 sys.exit(0)
 
             if self.args.packet_name.isdigit():
                 print("Wrong format of --packet-name=%s: only digits are not allowed!" % self.args.packet_name)
+                self.is_exit = True
                 sys.exit(0)
 
             if len(self.args.packet_name) < 3:
                 print("Wrong format of --packet-name=%s: minimal length is 3 symbols!" % self.args.packet_name)
+                self.is_exit = True
                 sys.exit(0)
 
             prepare_dirs(self.sys_conf.current_dir, ["log"])
@@ -254,6 +271,7 @@ class DBCParams:
                         shutil.copy(os.path.join(template_dir, f_name), packet_dir)
                 else:
                     print("Directory %s is not exists!" % template_dir)
+                    self.is_exit = True
                     sys.exit(0)
             # ========================================================================
             if hasattr(self.args, 'conf') and self.args.conf != '':
@@ -270,7 +288,7 @@ class DBCParams:
 
             if hasattr(self.args, 'placeholders') and self.args.placeholders != '':
                 try:
-                    self.placeholders = json.loads(self.args.placeholders)
+                    self.placeholders = json.loads(self.args.placeholders.replace("""\'""", "\""))
                 except:
                     raise Exception('Invalid value in --placeholders parameter')
 
@@ -295,7 +313,6 @@ class DBCParams:
                 self.matterhook = None
 
         except SystemExit as e:
-            print("Exiting...")
             sys.exit(0)
         except:
             print("Can't initialize application. Exiting...")
@@ -455,8 +472,9 @@ class MainRoutine(DBCParams, DBCCore):
             self.init_packet_type()
             self.init_dbs_list()
         except:
-            print("Can't run application. Exiting...")
-            print(exception_helper())
+            if not self.is_exit:
+                print("Can't run application. Exiting...")
+                print(exception_helper())
             sys.exit(0)
 
     # helper for iterate all threads
