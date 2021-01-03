@@ -1,5 +1,0 @@
-{
-	"responsible": "Oleg Gurov",
-	"description": "Queries to diagnose indexes",
-	"type": "read_only"
-}

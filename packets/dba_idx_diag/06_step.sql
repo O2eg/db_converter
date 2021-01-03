@@ -1,6 +1,6 @@
 -- Issue: there is no index on the fields declared as FK
 -- Solution: create an index
-SELECT
+select
 	n_target.nspname as target_nspname,
 	c_target.relname as target_relname,
 	af.attname as target_fld,
@@ -12,11 +12,11 @@ SELECT
 	format('CREATE INDEX ON %I.%I USING btree (%I)', n_source.nspname, c_source.relname, ar.attname),
 	 ar.attname --,
 	 --existed_idxs.oid
-FROM pg_constraint con
-JOIN pg_class c_target ON con.confrelid = c_target.oid
-JOIN pg_class c_source ON con.conrelid = c_source.oid
-JOIN pg_namespace n_target ON n_target.oid = c_target.relnamespace
-JOIN pg_namespace n_source ON n_source.oid = c_source.relnamespace
+from pg_constraint con
+join pg_class c_target ON con.confrelid = c_target.oid
+join pg_class c_source ON con.conrelid = c_source.oid
+join pg_namespace n_target ON n_target.oid = c_target.relnamespace
+join pg_namespace n_source ON n_source.oid = c_source.relnamespace
 join pg_attribute af on
 	  af.attrelid = con.confrelid and af.attnum = any(con.confkey) and not af.attisdropped
 join pg_attribute ar on
