@@ -1,5 +1,6 @@
 -- Issue: the btree index is created on field of text type
 -- Solution: replace "btree" with "hash" if there is no partial match
+select 'Checking btree indexes created on text fields...' as "Check name";
 select
 	n.nspname as nspname,
 	cr.relname as tbl_name,

@@ -1,5 +1,6 @@
 -- Issue: the index has more than 3 fields
--- Solution: create an index of 2 fields and compare the statistics of scans per day "2 fields" vs "3 fields"
+-- Solution: create an index of 2-3 fields and compare the statistics of scans per day "2-3 fields" vs "4+ fields"
+select 'Checking indexes with more than 3 fields...' as "Check name";
 select
 	n.nspname as nspname,
 	cr.relname as tbl_name,

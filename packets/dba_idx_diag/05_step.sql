@@ -1,5 +1,6 @@
 -- Issue: there is an unused index
 -- Solution: remove unused index
+select 'Checking unused indexes...' as "Check name";
 select
 	pg_size_pretty(pg_relation_size(cr.oid)) as tbl_size,
 	pg_size_pretty(pg_relation_size(ci.oid)) as idx_size,

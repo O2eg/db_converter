@@ -1,5 +1,6 @@
 -- Issue: no primary key or unique index
 -- Solution: create a primary key or unique index
+select 'Checking for missing primary key or unique index...' as "Check name";
 select
 	n.nspname,
 	cr.relname as tbl_name

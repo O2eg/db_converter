@@ -1,5 +1,6 @@
 -- Issue: size of the index is more than 50% of table
 -- Solution: needs to check bloat and field types that are indexed
+select 'Checking the size of indexes that are more than 50% of table...' as "Check name";
 select
 	pg_size_pretty(pg_relation_size(cr.oid)) as tbl_size,
 	pg_size_pretty(pg_relation_size(ci.oid)) as idx_size,
