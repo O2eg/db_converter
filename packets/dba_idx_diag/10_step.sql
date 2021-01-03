@@ -1,5 +1,6 @@
 -- Issue: tables with potentially missing indexes
 -- Solution: create indexes according to frequent queries or optimize queries
+select 'Checking for tables with missed indexes...' as "Check name";
 select
 	n.nspname,
 	c.relname as tbl_name,
