@@ -22,22 +22,30 @@ def mocked_requests_post(*args, **kwargs):
     return Response()
 
 
-class TestDBCPackets(unittest.TestCase):
+class CommonVars:
+    conf_file = 'db_converter_test.conf'
+    packets_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+        "packets"
+    )
+    # databases from conf_file
+    pg_db = 'pg_db'
+    test_dbc_01 = 'test_dbc_01'
+    test_dbc_02 = 'test_dbc_02'
+    test_dbc_packets = 'test_dbc_packets'   # this database is recreated for each packet unit test
+
+
+class TestDBCPackets(unittest.TestCase, CommonVars):
     wipes = []
     runs = []
-    conf_file = 'db_converter_test.conf'
 
     def setUp(self):
-        packets_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-            "packets"
-        )
         del self.wipes[:]
         del self.runs[:]
 
         packets = [
-            f for f in os.listdir(packets_dir)
-            if f.startswith('test_') and os.path.isdir(os.path.join(packets_dir, f)) and f not in [
+            f for f in os.listdir(self.packets_dir)
+            if f.startswith('test_') and os.path.isdir(os.path.join(self.packets_dir, f)) and f not in [
                 'test_sleep_sigint',
                 'test_skip_step_cancel',
                 'test_skip_action_cancel',
@@ -108,17 +116,15 @@ class TestDBCPackets(unittest.TestCase):
                 self.assertTrue(res.packet_status[args[0].db_name] == PacketStatus.EXCEPTION)
 
 
-class TestDBCLock(unittest.TestCase):
+class TestDBCLock(unittest.TestCase, CommonVars):
     wipe_params = None
     run_params = None
-    conf_file = 'db_converter_test.conf'
     packet_name = 'test_sleep'
-    db_name = 'test_dbc_01'
 
     def setUp(self):
         wipe_args = dict(
             packet_name=self.packet_name,
-            db_name=self.db_name,
+            db_name=self.test_dbc_01,
             template=None,
             list=None,
             status=None,
@@ -132,7 +138,7 @@ class TestDBCLock(unittest.TestCase):
 
         run_args = dict(
             packet_name=self.packet_name,
-            db_name=self.db_name,
+            db_name=self.test_dbc_01,
             template=None,
             list=None,
             status=None,
@@ -149,63 +155,59 @@ class TestDBCLock(unittest.TestCase):
     def test_lock(self, mocked_requests_post):
         dbc = MainRoutine(self.wipe_params, self.conf_file)
         res_1 = dbc.run()
-        self.assertTrue(res_1.packet_status[self.db_name] == PacketStatus.NEW)
-        self.assertTrue(res_1.result_code[self.db_name] == ResultCode.NOTHING_TODO)
+        self.assertTrue(res_1.packet_status[self.test_dbc_01] == PacketStatus.NEW)
+        self.assertTrue(res_1.result_code[self.test_dbc_01] == ResultCode.NOTHING_TODO)
 
-        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.test_dbc_01])
         ActionTracker.set_packet_lock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
 
         res_2 = MainRoutine(self.run_params, self.conf_file).run()
-        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.STARTED)
-        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.LOCKED)
+        self.assertTrue(res_2.packet_status[self.test_dbc_01] == PacketStatus.STARTED)
+        self.assertTrue(res_2.result_code[self.test_dbc_01] == ResultCode.LOCKED)
 
         ActionTracker.set_packet_unlock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
         db_conn.close()
 
         res_3 = MainRoutine(self.run_params, self.conf_file).run()
-        self.assertTrue(res_3.packet_status[self.db_name] == PacketStatus.DONE)
-        self.assertTrue(res_3.result_code[self.db_name] == ResultCode.SUCCESS)
+        self.assertTrue(res_3.packet_status[self.test_dbc_01] == PacketStatus.DONE)
+        self.assertTrue(res_3.result_code[self.test_dbc_01] == ResultCode.SUCCESS)
 
 
-class TestDBCLockKey(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCLockKey(unittest.TestCase, CommonVars):
     packet_name = 'test_sleep'
-    db_name = 'test_dbc_01'
 
     @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
     def test_lock(self, mocked_requests_post):
         parser = DBCParams.get_arg_parser()
-        args = parser.parse_args(['--packet-name=' + self.packet_name, '--db-name=' + self.db_name])
+        args = parser.parse_args(['--packet-name=' + self.packet_name, '--db-name=' + self.test_dbc_01])
         dbc = MainRoutine(args, self.conf_file)
 
-        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.test_dbc_01])
         ActionTracker.set_packet_lock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
 
         res_1 = dbc.run()
-        self.assertTrue(res_1.packet_status[self.db_name] == PacketStatus.STARTED)
-        self.assertTrue(res_1.result_code[self.db_name] == ResultCode.LOCKED)
+        self.assertTrue(res_1.packet_status[self.test_dbc_01] == PacketStatus.STARTED)
+        self.assertTrue(res_1.result_code[self.test_dbc_01] == ResultCode.LOCKED)
 
         ActionTracker.set_packet_unlock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
 
         res_2 = MainRoutine(args, self.conf_file).run()
-        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
-        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
+        self.assertTrue(res_2.packet_status[self.test_dbc_01] == PacketStatus.DONE)
+        self.assertTrue(res_2.result_code[self.test_dbc_01] == ResultCode.SUCCESS)
 
         db_conn.close()
 
 
-class TestDBCSignal(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCSignal(unittest.TestCase, CommonVars):
     packet_name = 'test_sleep_sigint'
-    db_name = 'test_dbc_01'
 
     @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
     def test_sigint(self, mocked_requests_post):
         parser = DBCParams.get_arg_parser()
-        args = parser.parse_args(['--packet-name=' + self.packet_name, '--db-name=' + self.db_name])
+        args = parser.parse_args(['--packet-name=' + self.packet_name, '--db-name=' + self.test_dbc_01])
 
         dbc = MainRoutine(args, self.conf_file)
-        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.test_dbc_01])
         ActionTracker.set_packet_unlock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
         db_conn.close()
 
@@ -222,25 +224,24 @@ class TestDBCSignal(unittest.TestCase):
             time.sleep(5)
             main.external_interrupt = True
             time.sleep(3)
-            th_db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+            th_db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.test_dbc_01])
             main.terminate_conns(
-                th_db_conn, self.db_name, main.sys_conf.application_name, self.packet_name
+                th_db_conn, self.test_dbc_01, main.sys_conf.application_name, self.packet_name
             )
             th_db_conn.close()
 
         if os.name == 'nt':
-            main.append_thread(self.db_name + '_ext', emulate_signal())
+            main.append_thread(self.test_dbc_01 + '_ext', emulate_signal())
         else:
-            main.append_thread(self.db_name + '_ext', send_signal())
+            main.append_thread(self.test_dbc_01 + '_ext', send_signal())
 
         res = main.run()
 
-        self.assertTrue(res.packet_status[self.db_name] == PacketStatus.STARTED)
-        self.assertTrue(res.result_code[self.db_name] == ResultCode.TERMINATE)
+        self.assertTrue(res.packet_status[self.test_dbc_01] == PacketStatus.STARTED)
+        self.assertTrue(res.result_code[self.test_dbc_01] == ResultCode.TERMINATE)
 
 
-class TestDBCUnknownDB(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCUnknownDB(unittest.TestCase, CommonVars):
     packet_name = 'test_sleep_sigint'
     db_names = ['test_dbc_unknown_1', 'test_dbc_unknown_2']
 
@@ -256,17 +257,15 @@ class TestDBCUnknownDB(unittest.TestCase):
             self.assertTrue(res.result_code[db] == ResultCode.NOTHING_TODO)
 
 
-class TestDBCConnErr(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCConnErr(unittest.TestCase, CommonVars):
     packet_name = 'test_sleep'
-    db_name = 'test_dbc_01'
 
     def test_conn_err(self):
         parser = DBCParams.get_arg_parser()
-        args = parser.parse_args(['--packet-name=' + self.packet_name, '--db-name=' + self.db_name])
+        args = parser.parse_args(['--packet-name=' + self.packet_name, '--db-name=' + self.test_dbc_01])
 
         dbc = MainRoutine(args, self.conf_file)
-        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.test_dbc_01])
         ActionTracker.init_tbls(db_conn, dbc.sys_conf.schema_location)
         ActionTracker.set_packet_unlock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
         db_conn.close()
@@ -276,42 +275,40 @@ class TestDBCConnErr(unittest.TestCase):
         @threaded
         def emulate_conn_error():
             time.sleep(2)
-            th_db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+            th_db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.test_dbc_01])
             main.terminate_conns(
-                th_db_conn, self.db_name, main.sys_conf.application_name, self.packet_name
+                th_db_conn, self.test_dbc_01, main.sys_conf.application_name, self.packet_name
             )
             th_db_conn.close()
 
-        main.append_thread(self.db_name + '_ext', emulate_conn_error())
+        main.append_thread(self.test_dbc_01 + '_ext', emulate_conn_error())
 
         res = main.run()
 
-        self.assertTrue(res.packet_status[self.db_name] == PacketStatus.DONE)
-        self.assertTrue(res.result_code[self.db_name] == ResultCode.SUCCESS)
+        self.assertTrue(res.packet_status[self.test_dbc_01] == PacketStatus.DONE)
+        self.assertTrue(res.result_code[self.test_dbc_01] == ResultCode.SUCCESS)
 
 
-class TestDBCSkipStepCancel(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCSkipStepCancel(unittest.TestCase, CommonVars):
     packet_name = 'test_skip_step_cancel'
-    db_name = 'test_dbc_01'
 
     def test_skip_step_cancel(self):
         parser = DBCParams.get_arg_parser()
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--wipe'
         ]), self.conf_file).run()
 
         args = parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--skip-step-cancel'
         ])
 
         dbc = MainRoutine(args, self.conf_file)
-        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.test_dbc_01])
         ActionTracker.set_packet_unlock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
         db_conn.close()
 
@@ -320,42 +317,40 @@ class TestDBCSkipStepCancel(unittest.TestCase):
         @threaded
         def emulate_conn_error():
             time.sleep(3)
-            th_db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+            th_db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.test_dbc_01])
             main.terminate_conns(
-                th_db_conn, self.db_name, main.sys_conf.application_name, self.packet_name, terminate=False
+                th_db_conn, self.test_dbc_01, main.sys_conf.application_name, self.packet_name, terminate=False
             )
             th_db_conn.close()
 
-        main.append_thread(self.db_name + '_ext', emulate_conn_error())
+        main.append_thread(self.test_dbc_01 + '_ext', emulate_conn_error())
 
         res_2 = main.run()
 
-        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.EXCEPTION)
-        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.FAIL)
+        self.assertTrue(res_2.packet_status[self.test_dbc_01] == PacketStatus.EXCEPTION)
+        self.assertTrue(res_2.result_code[self.test_dbc_01] == ResultCode.FAIL)
 
 
-class TestDBCSkipActionCancel(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCSkipActionCancel(unittest.TestCase, CommonVars):
     packet_name = 'test_skip_action_cancel'
-    db_name = 'test_dbc_01'
 
     def test_skip_action_cancel(self):
         parser = DBCParams.get_arg_parser()
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--wipe'
         ]), self.conf_file).run()
 
         args = parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--skip-action-cancel'
         ])
 
         dbc = MainRoutine(args, self.conf_file)
-        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.test_dbc_01])
         ActionTracker.set_packet_unlock(db_conn, dbc.sys_conf.schema_location, self.packet_name)
         db_conn.close()
 
@@ -364,24 +359,22 @@ class TestDBCSkipActionCancel(unittest.TestCase):
         @threaded
         def emulate_conn_error():
             time.sleep(5)
-            th_db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+            th_db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.test_dbc_01])
             main.terminate_conns(
-                th_db_conn, self.db_name, main.sys_conf.application_name, self.packet_name, terminate=False
+                th_db_conn, self.test_dbc_01, main.sys_conf.application_name, self.packet_name, terminate=False
             )
             th_db_conn.close()
 
-        main.append_thread(self.db_name + '_ext', emulate_conn_error())
+        main.append_thread(self.test_dbc_01 + '_ext', emulate_conn_error())
 
         res_2 = main.run()
 
-        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.EXCEPTION)
-        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.FAIL)
+        self.assertTrue(res_2.packet_status[self.test_dbc_01] == PacketStatus.EXCEPTION)
+        self.assertTrue(res_2.result_code[self.test_dbc_01] == ResultCode.FAIL)
 
 
-class TestDBCPrepareDBs(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCPrepareDBs(unittest.TestCase, CommonVars):
     packet_name = 'test_prepare_dbs'
-    db_name = 'pg_db'
 
     def test_create_db(self):
         global call_TestDBCPrepareDBs
@@ -391,10 +384,10 @@ class TestDBCPrepareDBs(unittest.TestCase):
         parser = DBCParams.get_arg_parser()
 
         args = parser.parse_args([
-            '--packet-name=' + self.packet_name, '--db-name=' + self.db_name, '--wipe'
+            '--packet-name=' + self.packet_name, '--db-name=' + self.pg_db, '--wipe'
         ])
         dbc = MainRoutine(args, self.conf_file)
-        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.pg_db])
         ActionTracker.cleanup(db_conn, dbc.sys_conf.schema_location)
 
         db_conn.execute("""
@@ -410,31 +403,29 @@ class TestDBCPrepareDBs(unittest.TestCase):
 
         MainRoutine(args, self.conf_file).run()
         MainRoutine(parser.parse_args([
-            '--packet-name=' + self.packet_name, '--db-name=' + self.db_name, '--unlock'
+            '--packet-name=' + self.packet_name, '--db-name=' + self.pg_db, '--unlock'
         ]), self.conf_file).run()
         res_1 = MainRoutine(parser.parse_args([
-            '--packet-name=' + self.packet_name, '--db-name=' + self.db_name
+            '--packet-name=' + self.packet_name, '--db-name=' + self.pg_db
         ]), self.conf_file).run()
 
         call_TestDBCPrepareDBs = True
 
 
-class TestDBCBlockerTxTimeout(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCBlockerTxTimeout(unittest.TestCase, CommonVars):
     packet_name = 'test_blocker_tx'
-    db_name = 'test_dbc_01'
 
     @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
     def test_blocker_tx(self, mocked_requests_post):
         parser = DBCParams.get_arg_parser()
         args = parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name
+            '--db-name=' + self.test_dbc_01
         ])
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--wipe'
         ]), self.conf_file).run()
 
@@ -443,35 +434,33 @@ class TestDBCBlockerTxTimeout(unittest.TestCase):
         @threaded
         def emulate_workload():
             time.sleep(3)
-            th_db_conn = postgresql.open(main.sys_conf.dbs_dict[self.db_name])
+            th_db_conn = postgresql.open(main.sys_conf.dbs_dict[self.test_dbc_01])
             th_db_conn.execute("""vacuum full public.test_blocker_tx_tbl""")
             th_db_conn.close()
 
-        main.append_thread(self.db_name + '_ext', emulate_workload())
+        main.append_thread(self.test_dbc_01 + '_ext', emulate_workload())
 
         res_2 = main.run()
 
         self.assertTrue(main.lock_observer_blocker_cnt == 1)
-        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
-        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
+        self.assertTrue(res_2.packet_status[self.test_dbc_01] == PacketStatus.DONE)
+        self.assertTrue(res_2.result_code[self.test_dbc_01] == ResultCode.SUCCESS)
 
 
-class TestDBCWaitTxTimeout(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCWaitTxTimeout(unittest.TestCase, CommonVars):
     packet_name = 'test_wait_tx'
-    db_name = 'test_dbc_01'
 
     @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
     def test_wait_tx(self, mocked_requests_post):
         parser = DBCParams.get_arg_parser()
         args = parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name
+            '--db-name=' + self.test_dbc_01
         ])
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--wipe'
         ]), self.conf_file).run()
 
@@ -479,7 +468,7 @@ class TestDBCWaitTxTimeout(unittest.TestCase):
 
         @threaded
         def emulate_workload():
-            th_db_conn = postgresql.open(main.sys_conf.dbs_dict[self.db_name])
+            th_db_conn = postgresql.open(main.sys_conf.dbs_dict[self.test_dbc_01])
             th_db_conn.execute("""
                 do $$
                 begin
@@ -490,29 +479,26 @@ class TestDBCWaitTxTimeout(unittest.TestCase):
             """)
             th_db_conn.close()
 
-        main.append_thread(self.db_name + '_ext', emulate_workload())
+        main.append_thread(self.test_dbc_01 + '_ext', emulate_workload())
 
         res_2 = main.run()
 
         self.assertTrue(main.lock_observer_wait_cnt == 1)
-        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
-        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
+        self.assertTrue(res_2.packet_status[self.test_dbc_01] == PacketStatus.DONE)
+        self.assertTrue(res_2.result_code[self.test_dbc_01] == ResultCode.SUCCESS)
 
         res = MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--status'
         ]), self.conf_file).run()
 
-        self.assertTrue(res.packet_status[self.db_name] == PacketStatus.DONE)
-        self.assertTrue(res.result_code[self.db_name] == ResultCode.SUCCESS)
+        self.assertTrue(res.packet_status[self.test_dbc_01] == PacketStatus.DONE)
+        self.assertTrue(res.result_code[self.test_dbc_01] == ResultCode.SUCCESS)
 
 
-class TestDBCInt4ToInt8(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCInt4ToInt8(unittest.TestCase, CommonVars):
     packet_name = 'test_int4_to_int8'
-    db_name_01 = 'test_dbc_01'
-    db_name_02 = 'test_dbc_02'
 
     def test_int4_to_int8(self):
         parser = DBCParams.get_arg_parser()
@@ -547,8 +533,8 @@ class TestDBCInt4ToInt8(unittest.TestCase):
             th_db_conn.close()
             print('================> thread emulate_workload finished for DB %s' % db_name)
 
-        main.append_thread('test_dbc_01_ext_th', emulate_workload(main.sys_conf.dbs_dict[self.db_name_01]))
-        main.append_thread('test_dbc_02_ext_th', emulate_workload(main.sys_conf.dbs_dict[self.db_name_02]))
+        main.append_thread('test_dbc_01_ext_th', emulate_workload(main.sys_conf.dbs_dict[self.test_dbc_01]))
+        main.append_thread('test_dbc_02_ext_th', emulate_workload(main.sys_conf.dbs_dict[self.test_dbc_02]))
 
         res = main.run()
 
@@ -558,19 +544,13 @@ class TestDBCInt4ToInt8(unittest.TestCase):
         self.assertTrue(res.result_code[self.db_name_02] == ResultCode.SUCCESS)
 
 
-class TestDBCAlertAndDBAPackets(unittest.TestCase):
+class TestDBCAlertAndDBAPackets(unittest.TestCase, CommonVars):
     runs = []
-    conf_file = 'db_converter_test.conf'
-    db_name = 'test_dbc_01'
 
     def setUp(self):
-        packets_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-            "packets"
-        )
         for f_name in [
-            f for f in os.listdir(packets_dir)
-            if (f.startswith('alert_') or f.startswith('dba_')) and os.path.isdir(os.path.join(packets_dir, f))
+            f for f in os.listdir(self.packets_dir)
+            if (f.startswith('alert_') or f.startswith('dba_')) and os.path.isdir(os.path.join(self.packets_dir, f))
         ]:
             args = dict(
                 packet_name=f_name,
@@ -589,9 +569,9 @@ class TestDBCAlertAndDBAPackets(unittest.TestCase):
     @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
     def test_packets(self, mocked_requests_post):
         parser = DBCParams.get_arg_parser()
-        args = parser.parse_args(['--packet-name=dba_get_version', '--db-name=' + self.db_name])
+        args = parser.parse_args(['--packet-name=dba_get_version', '--db-name=' + self.test_dbc_01])
         dbc = MainRoutine(args, self.conf_file)
-        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.db_name])
+        db_conn = postgresql.open(dbc.sys_conf.dbs_dict[self.test_dbc_01])
         ActionTracker.init_tbls(db_conn, dbc.sys_conf.schema_location)
 
         for args in self.runs:
@@ -603,28 +583,26 @@ class TestDBCAlertAndDBAPackets(unittest.TestCase):
         db_conn.close()
 
 
-class TestDBCExportData(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCExportData(unittest.TestCase, CommonVars):
     packet_name = 'test_export_data'
-    db_name = 'test_dbc_01'
 
     def test_export_data(self):
         parser = DBCParams.get_arg_parser()
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--unlock'
         ]), self.conf_file).run()
 
         dbc = MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name
+            '--db-name=' + self.test_dbc_01
         ]), self.conf_file)
         res = dbc.run()
 
-        self.assertTrue(res.packet_status[self.db_name] == PacketStatus.DONE)
-        self.assertTrue(res.result_code[self.db_name] == ResultCode.SUCCESS)
+        self.assertTrue(res.packet_status[self.test_dbc_01] == PacketStatus.DONE)
+        self.assertTrue(res.result_code[self.test_dbc_01] == ResultCode.SUCCESS)
 
         self.assertTrue(len(dbc.export_results.csv_files) > 0)
         for csv_file in dbc.export_results.csv_files:
@@ -654,31 +632,29 @@ class TestDBCExportData(unittest.TestCase):
         del dbc.export_results.csv_files[:]
 
 
-class TestDBCPyStep(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCPyStep(unittest.TestCase, CommonVars):
     packet_name = 'test_py_step'
-    db_name = 'test_dbc_01'
 
     def test_py_step(self):
         parser = DBCParams.get_arg_parser()
         args = parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name
+            '--db-name=' + self.test_dbc_01
         ])
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--wipe'
         ]), self.conf_file).run()
 
         main = MainRoutine(args, self.conf_file)
         res_2 = main.run()
 
-        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
-        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
+        self.assertTrue(res_2.packet_status[self.test_dbc_01] == PacketStatus.DONE)
+        self.assertTrue(res_2.result_code[self.test_dbc_01] == ResultCode.SUCCESS)
 
-        db_local = postgresql.open(main.sys_conf.dbs_dict[self.db_name])
+        db_local = postgresql.open(main.sys_conf.dbs_dict[self.test_dbc_01])
         content = get_resultset(db_local, """
             SELECT content
             FROM public.test_tbl_import
@@ -690,48 +666,44 @@ class TestDBCPyStep(unittest.TestCase):
         db_local.close()
 
 
-class TestDBCCloneSchema(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCCloneSchema(unittest.TestCase, CommonVars):
     test_packet_name = 'test_dba_clone_schema'
     dba_packet_name = 'dba_clone_schema'
-    db_name = 'test_dbc_01'
 
     def test_clone_schema(self):
         parser = DBCParams.get_arg_parser()
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.test_packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--wipe'
         ]), self.conf_file).run()
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.dba_packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--wipe'
         ]), self.conf_file).run()
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.dba_packet_name,
-            '--db-name=' + self.db_name
+            '--db-name=' + self.test_dbc_01
         ]), self.conf_file).run()
 
         args = parser.parse_args([
             '--packet-name=' + self.test_packet_name,
-            '--db-name=' + self.db_name
+            '--db-name=' + self.test_dbc_01
         ])
 
         main = MainRoutine(args, self.conf_file)
         res_2 = main.run()
 
-        self.assertTrue(res_2.packet_status[self.db_name] == PacketStatus.DONE)
-        self.assertTrue(res_2.result_code[self.db_name] == ResultCode.SUCCESS)
+        self.assertTrue(res_2.packet_status[self.test_dbc_01] == PacketStatus.DONE)
+        self.assertTrue(res_2.result_code[self.test_dbc_01] == ResultCode.SUCCESS)
 
 
-class TestDBCOverrideConfParam(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCOverrideConfParam(unittest.TestCase, CommonVars):
     packet_name = 'test_override_conf_param'
-    db_name = 'test_dbc_01'
     schema_location = 'dbc_a'
 
     def test_override_conf_param(self):
@@ -739,14 +711,14 @@ class TestDBCOverrideConfParam(unittest.TestCase):
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--conf={"schema_location":"%s"}' % self.schema_location,
             '--unlock',
         ]), self.conf_file).run()
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--conf={"schema_location":"%s"}' % self.schema_location,
             '--wipe',
         ]), self.conf_file).run()
@@ -760,7 +732,7 @@ class TestDBCOverrideConfParam(unittest.TestCase):
         ):
             args = parser.parse_args([
                 '--packet-name=' + self.packet_name,
-                '--db-name=' + self.db_name,
+                '--db-name=' + self.test_dbc_01,
                 '--conf={"statement_timeout":"%s","schema_location":"%s"}' % (statement_timeout, self.schema_location),
                 '--skip-step-cancel'
             ])
@@ -768,10 +740,10 @@ class TestDBCOverrideConfParam(unittest.TestCase):
             main = MainRoutine(args, self.conf_file)
             res = main.run()
 
-            self.assertTrue(res.packet_status[self.db_name] == packet_status)
-            self.assertTrue(res.result_code[self.db_name] == result_code)
+            self.assertTrue(res.packet_status[self.test_dbc_01] == packet_status)
+            self.assertTrue(res.result_code[self.test_dbc_01] == result_code)
 
-            db_local = postgresql.open(main.sys_conf.dbs_dict[self.db_name])
+            db_local = postgresql.open(main.sys_conf.dbs_dict[self.test_dbc_01])
             dbc_packets_content = get_resultset(
                 db_local,
                 """SELECT status, meta_data
@@ -793,33 +765,31 @@ class TestDBCOverrideConfParam(unittest.TestCase):
         run_meta_test('1h', PacketStatus.DONE, ResultCode.SUCCESS, 'done', None)
 
 
-class TestDBCPlaceholders(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCPlaceholders(unittest.TestCase, CommonVars):
     packet_name = 'test_placeholders'
-    db_name = 'test_dbc_01'
 
     def test_placeholders(self):
         parser = DBCParams.get_arg_parser()
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--wipe',
         ]), self.conf_file).run()
 
         args = parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + self.test_dbc_01,
             '--placeholders={"USER_NAME":"dbc_test_user","PASSW":"1234"}',
         ])
 
         main = MainRoutine(args, self.conf_file)
         res = main.run()
 
-        self.assertTrue(res.packet_status[self.db_name] == PacketStatus.DONE)
-        self.assertTrue(res.result_code[self.db_name] == ResultCode.SUCCESS)
+        self.assertTrue(res.packet_status[self.test_dbc_01] == PacketStatus.DONE)
+        self.assertTrue(res.result_code[self.test_dbc_01] == ResultCode.SUCCESS)
 
-        db_local = postgresql.open(main.sys_conf.dbs_dict[self.db_name])
+        db_local = postgresql.open(main.sys_conf.dbs_dict[self.test_dbc_01])
         dbc_packets_content = get_resultset(
             db_local,
             """
@@ -832,55 +802,47 @@ class TestDBCPlaceholders(unittest.TestCase):
         db_local.close()
 
 
-class TestDBCAllSeq(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
+class TestDBCAllSeq(unittest.TestCase, CommonVars):
     packet_name = 'test_get_version'
-    db_name = 'ALL,exclude:test_dbc_01,test_dbc_packets,pg_db'
-    target_db = 'test_dbc_02'
 
     @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
     def test_all_seq(self, mocked_requests_post):
+        db_name = 'ALL,exclude:%s,%s,%s' % (self.test_dbc_01, self.test_dbc_packets, self.pg_db)
         parser = DBCParams.get_arg_parser()
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + db_name,
             '--unlock',
         ]), self.conf_file).run()
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + db_name,
             '--wipe',
         ]), self.conf_file).run()
 
         MainRoutine(parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + db_name,
             '--list',
         ]), self.conf_file).run()
 
         args = parser.parse_args([
             '--packet-name=' + self.packet_name,
-            '--db-name=' + self.db_name,
+            '--db-name=' + db_name,
             '--conf={"log_level":"Debug", "log_sql": "True"}',
         ])
 
         main = MainRoutine(args, self.conf_file)
         res = main.run()
 
-        self.assertTrue(res.packet_status[self.target_db] == PacketStatus.DONE)
-        self.assertTrue(res.result_code[self.target_db] == ResultCode.SUCCESS)
+        self.assertTrue(res.packet_status[self.test_dbc_02] == PacketStatus.DONE)
+        self.assertTrue(res.result_code[self.test_dbc_02] == ResultCode.SUCCESS)
 
 
-class TestDBCPacketWithTestData(unittest.TestCase):
-    conf_file = 'db_converter_test.conf'
-    db_name = 'test_dbc_packets'     # this database is recreated for each packet unit test
+class TestDBCPacketWithTestData(unittest.TestCase, CommonVars):
     test_packet_names = []
-    packets_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-        "packets"
-    )
 
     def setUp(self):
         del self.test_packet_names[:]
@@ -898,7 +860,7 @@ class TestDBCPacketWithTestData(unittest.TestCase):
 
         args = parser.parse_args([
             # set any --packet-name for initialization
-            '--packet-name=test_common', '--db-name=' + self.db_name, '--list'
+            '--packet-name=test_common', '--db-name=' + self.test_dbc_packets, '--list'
         ])
         dbc = MainRoutine(args, self.conf_file)
 
@@ -910,9 +872,9 @@ class TestDBCPacketWithTestData(unittest.TestCase):
                 FROM pg_stat_activity
                 WHERE pid <> pg_backend_pid()
                     AND datname = '%s'
-            """ % self.db_name)
+            """ % self.test_dbc_packets)
 
-            db_conn.execute("""DROP DATABASE IF EXISTS %s""" % self.db_name)
+            db_conn.execute("""DROP DATABASE IF EXISTS %s""" % self.test_dbc_packets)
             db_conn.execute("""
                 CREATE DATABASE %s
                     WITH
@@ -921,7 +883,7 @@ class TestDBCPacketWithTestData(unittest.TestCase):
                     LC_COLLATE = 'en_US.UTF-8'
                     LC_CTYPE = 'en_US.UTF-8'
                     TABLESPACE = pg_default
-                    template = template0""" % self.db_name)
+                    template = template0""" % self.test_dbc_packets)
             db_conn.close()
 
         for packet in self.test_packet_names:
@@ -930,16 +892,16 @@ class TestDBCPacketWithTestData(unittest.TestCase):
             # run test packet
             MainRoutine(parser.parse_args([
                 '--packet-name=' + packet[1],
-                '--db-name=' + self.db_name
+                '--db-name=' + self.test_dbc_packets
             ]), self.conf_file).run()
 
             # run main packet
             res_main_packet = MainRoutine(parser.parse_args([
                 '--packet-name=' + packet[0],
-                '--db-name=' + self.db_name
+                '--db-name=' + self.test_dbc_packets
             ]), self.conf_file).run()
 
-            for step, step_result in res_main_packet.result_data[self.db_name].items():
+            for step, step_result in res_main_packet.result_data[self.test_dbc_packets].items():
                 step_result_text = to_json(step_result, formatted=True)
                 # if *.sql_out_orig not exists then save result of main packet to *.sql_out_orig
                 if not os.path.isfile(os.path.join(self.packets_dir, packet[1], step + "_out")):
