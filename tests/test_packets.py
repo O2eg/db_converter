@@ -538,10 +538,10 @@ class TestDBCInt4ToInt8(unittest.TestCase, CommonVars):
 
         res = main.run()
 
-        self.assertTrue(res.packet_status[self.db_name_01] == PacketStatus.DONE)
-        self.assertTrue(res.result_code[self.db_name_01] == ResultCode.SUCCESS)
-        self.assertTrue(res.packet_status[self.db_name_02] == PacketStatus.DONE)
-        self.assertTrue(res.result_code[self.db_name_02] == ResultCode.SUCCESS)
+        self.assertTrue(res.packet_status[self.test_dbc_01] == PacketStatus.DONE)
+        self.assertTrue(res.result_code[self.test_dbc_01] == ResultCode.SUCCESS)
+        self.assertTrue(res.packet_status[self.test_dbc_01] == PacketStatus.DONE)
+        self.assertTrue(res.result_code[self.test_dbc_01] == ResultCode.SUCCESS)
 
 
 class TestDBCAlertAndDBAPackets(unittest.TestCase, CommonVars):
@@ -554,7 +554,7 @@ class TestDBCAlertAndDBAPackets(unittest.TestCase, CommonVars):
         ]:
             args = dict(
                 packet_name=f_name,
-                db_name=self.db_name,
+                db_name=self.test_dbc_01,
                 template=None,
                 list=None,
                 status=None,
