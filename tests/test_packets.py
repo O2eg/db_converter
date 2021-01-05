@@ -933,6 +933,8 @@ class TestDBCPacketWithTestData(unittest.TestCase, CommonVars):
                         if validation_failed:
                             print("Validating: %s FAIL" % step)
                             self.assertTrue(False)
+                        else:
+                            print("Validating: %s OK" % step)
                     else:
                         print("Validating: %s OK" % step)
 
