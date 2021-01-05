@@ -956,10 +956,21 @@ class TestDBCPacketWithTestData(unittest.TestCase):
                     orig_out = orig_out_file.read()
                     orig_out_file.close()
                     if orig_out != step_result_text:
-                        for line in difflib.unified_diff(orig_out.splitlines(), step_result_text.splitlines()):
+                        orig_out_list = orig_out.splitlines()
+                        step_result_text_list = step_result_text.splitlines()
+                        del_items = []
+                        for row_num, row in enumerate(orig_out_list):
+                            if row.find("<SKIP>") > -1:
+                                del_items.append(row_num)
+                        orig_out_list = [i for j, i in enumerate(orig_out_list) if j not in del_items]
+                        step_result_text_list = [i for j, i in enumerate(step_result_text_list) if j not in del_items]
+                        validation_failed = False
+                        for line in difflib.unified_diff(orig_out_list, step_result_text_list):
                             print(line.rstrip())
-                        print("Validating: %s FAIL" % step)
-                        self.assertTrue(False)
+                            validation_failed = True
+                        if validation_failed:
+                            print("Validating: %s FAIL" % step)
+                            self.assertTrue(False)
                     else:
                         print("Validating: %s OK" % step)
 

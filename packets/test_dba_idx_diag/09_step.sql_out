@@ -8,7 +8,7 @@
         [
             "public",
             "tbl_index_case_2",
-            "11 MB",
+            <SKIP>,
             1100,
             11000
         ]

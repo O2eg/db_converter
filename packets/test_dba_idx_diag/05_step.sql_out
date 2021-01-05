@@ -6,8 +6,8 @@
     ],
     [
         [
-            "8248 kB",
-            "2208 kB",
+            <SKIP>,
+            <SKIP>,
             "public",
             "tbl_index_case",
             "tbl_index_case_fld_1_idx4",
@@ -16,8 +16,8 @@
             0.0
         ],
         [
-            "8248 kB",
-            "10064 kB",
+            <SKIP>,
+            <SKIP>,
             "public",
             "tbl_index_case",
             "tbl_index_case_text_fld_idx",
@@ -26,8 +26,8 @@
             0.0
         ],
         [
-            "8248 kB",
-            "4688 kB",
+            <SKIP>,
+            <SKIP>,
             "public",
             "tbl_index_case",
             "tbl_index_case_text_fld_idx1",
@@ -36,8 +36,8 @@
             0.0
         ],
         [
-            "8248 kB",
-            "6640 kB",
+            <SKIP>,
+            <SKIP>,
             "public",
             "tbl_index_case",
             "tbl_index_case_text_fld_idx2",
@@ -46,8 +46,8 @@
             0.0
         ],
         [
-            "8248 kB",
-            "2224 kB",
+            <SKIP>,
+            <SKIP>,
             "public",
             "tbl_index_case",
             "tbl_index_case_text_fld_idx3",
@@ -56,8 +56,8 @@
             0.0
         ],
         [
-            "8248 kB",
-            "2208 kB",
+            <SKIP>,
+            <SKIP>,
             "public",
             "tbl_index_case",
             "tbl_index_case_text_fld_idx_dub_1",
@@ -66,8 +66,8 @@
             0.0
         ],
         [
-            "8248 kB",
-            "2208 kB",
+            <SKIP>,
+            <SKIP>,
             "public",
             "tbl_index_case",
             "tbl_index_case_text_fld_idx_dub_2",
@@ -76,8 +76,8 @@
             0.0
         ],
         [
-            "8248 kB",
-            "3104 kB",
+            <SKIP>,
+            <SKIP>,
             "public",
             "tbl_index_case",
             "tbl_index_case_text_fld_idx_dub_3",
@@ -86,8 +86,8 @@
             0.0
         ],
         [
-            "8248 kB",
-            "3104 kB",
+            <SKIP>,
+            <SKIP>,
             "public",
             "tbl_index_case",
             "tbl_index_case_text_fld_idx_dub_4",
