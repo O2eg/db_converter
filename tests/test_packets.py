@@ -835,7 +835,7 @@ class TestDBCPlaceholders(unittest.TestCase):
 class TestDBCAllSeq(unittest.TestCase):
     conf_file = 'db_converter_test.conf'
     packet_name = 'test_get_version'
-    db_name = 'ALL,exclude:test_dbc_01,pg_db'
+    db_name = 'ALL,exclude:test_dbc_01,test_dbc_03,pg_db'
     target_db = 'test_dbc_02'
 
     @mock.patch('matterhook.incoming.requests.post', side_effect=mocked_requests_post)
