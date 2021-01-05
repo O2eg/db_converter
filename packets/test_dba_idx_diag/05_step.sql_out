@@ -1,0 +1,99 @@
+[
+    [
+        [
+            "Checking unused indexes..."
+        ]
+    ],
+    [
+        [
+            "8248 kB",
+            "2208 kB",
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_fld_1_idx4",
+            1100,
+            0,
+            0.0
+        ],
+        [
+            "8248 kB",
+            "10064 kB",
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx",
+            1100,
+            0,
+            0.0
+        ],
+        [
+            "8248 kB",
+            "4688 kB",
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx1",
+            1100,
+            0,
+            0.0
+        ],
+        [
+            "8248 kB",
+            "6640 kB",
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx2",
+            1100,
+            0,
+            0.0
+        ],
+        [
+            "8248 kB",
+            "2224 kB",
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx3",
+            1100,
+            0,
+            0.0
+        ],
+        [
+            "8248 kB",
+            "2208 kB",
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx_dub_1",
+            1100,
+            0,
+            0.0
+        ],
+        [
+            "8248 kB",
+            "2208 kB",
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx_dub_2",
+            1100,
+            0,
+            0.0
+        ],
+        [
+            "8248 kB",
+            "3104 kB",
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx_dub_3",
+            1100,
+            0,
+            0.0
+        ],
+        [
+            "8248 kB",
+            "3104 kB",
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx_dub_4",
+            1100,
+            0,
+            0.0
+        ]
+    ]
+]

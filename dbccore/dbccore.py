@@ -887,7 +887,8 @@ class DBCCore:
             )
             raise Exception('execute_q')
 
-        # output via hook
+        self.result_data.setdefault(ctx.db_name, {})
+        self.result_data[ctx.db_name].update({ctx.step[0]: results})
         self.resultset_hook(ctx, results)
 
     def execute_step(

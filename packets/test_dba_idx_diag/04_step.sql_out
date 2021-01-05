@@ -1,0 +1,58 @@
+[
+    [
+        [
+            "Checking btree indexes created on text fields..."
+        ]
+    ],
+    [
+        [
+            "dbc",
+            "dbc_actions",
+            "dbc_actions_step_hash_idx",
+            "step_hash",
+            "CREATE INDEX dbc_actions_step_hash_idx ON dbc.dbc_actions USING btree (step_hash)"
+        ],
+        [
+            "dbc",
+            "dbc_actions",
+            "dbc_actions_uniq",
+            "step_hash",
+            "CREATE UNIQUE INDEX dbc_actions_uniq ON dbc.dbc_actions USING btree (packet_id, step_id, step_hash)"
+        ],
+        [
+            "dbc",
+            "dbc_locks",
+            "dbc_locks_name_idx",
+            "name",
+            "CREATE UNIQUE INDEX dbc_locks_name_idx ON dbc.dbc_locks USING btree (name)"
+        ],
+        [
+            "dbc",
+            "dbc_packets",
+            "dbc_packets_name_idx",
+            "name",
+            "CREATE UNIQUE INDEX dbc_packets_name_idx ON dbc.dbc_packets USING btree (name)"
+        ],
+        [
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx",
+            "text_fld",
+            "CREATE INDEX tbl_index_case_text_fld_idx ON public.tbl_index_case USING btree (text_fld) WITH (fillfactor='100')"
+        ],
+        [
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx2",
+            "text_fld",
+            "CREATE INDEX tbl_index_case_text_fld_idx2 ON public.tbl_index_case USING btree (text_fld, fld_1, fld_2, fld_3)"
+        ],
+        [
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx3",
+            "text_fld_2",
+            "CREATE INDEX tbl_index_case_text_fld_idx3 ON public.tbl_index_case USING btree (text_fld_2)"
+        ]
+    ]
+]

@@ -15,5 +15,6 @@ where
 	c.relpages > 1000 and
 	seq_scan > 1000 and
 	seq_tup_read/seq_scan > 1000 and
-	idx_tup_fetch < seq_tup_read
+	idx_tup_fetch < seq_tup_read and
+	relhasindex is true
 limit 100

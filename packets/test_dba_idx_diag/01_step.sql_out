@@ -1,0 +1,41 @@
+[
+    [
+        [
+            "Checking the size of indexes that are more than 50% of table..."
+        ]
+    ],
+    [
+        [
+            "8248 kB",
+            "10064 kB",
+            122.02,
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx"
+        ],
+        [
+            "8248 kB",
+            "6640 kB",
+            80.5,
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx2"
+        ],
+        [
+            "8248 kB",
+            "4688 kB",
+            56.84,
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx1"
+        ],
+        [
+            "11 MB",
+            "5496 kB",
+            50.81,
+            "public",
+            "tbl_index_case_3",
+            "tbl_index_case_3_pkey"
+        ]
+    ]
+]

@@ -1,0 +1,31 @@
+[
+    [
+        [
+            "Checking fields declared as FK without indexes..."
+        ]
+    ],
+    [
+        [
+            "public",
+            "tbl_a",
+            "id",
+            "fk_tbl_a",
+            "public",
+            "tbl_b",
+            "tbl_a_id",
+            "FOREIGN KEY (tbl_a_id) REFERENCES tbl_a(id) ON DELETE CASCADE",
+            "CREATE INDEX ON public.tbl_b USING btree (tbl_a_id)"
+        ],
+        [
+            "public",
+            "tbl_b",
+            "id",
+            "fk_tbl_b",
+            "public",
+            "tbl_a",
+            "tbl_b_id",
+            "FOREIGN KEY (tbl_b_id) REFERENCES tbl_b(id) ON DELETE CASCADE",
+            "CREATE INDEX ON public.tbl_a USING btree (tbl_b_id)"
+        ]
+    ]
+]

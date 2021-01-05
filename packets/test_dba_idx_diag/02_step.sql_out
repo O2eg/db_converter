@@ -1,0 +1,15 @@
+[
+    [
+        [
+            "Checking indexes with more than 3 fields..."
+        ]
+    ],
+    [
+        [
+            "public",
+            "tbl_index_case",
+            "tbl_index_case_text_fld_idx2",
+            4
+        ]
+    ]
+]

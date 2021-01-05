@@ -47,6 +47,53 @@ begin
         perform * from tbl_index_case where fld_1 = counter;
     end loop;
 end$$;
+
+analyze public.tbl_index_case;
+-----------------------------
+-- table without indexes
+drop table if exists public.tbl_index_case_2;
+CREATE TABLE public.tbl_index_case_2
+(
+    id bigserial,
+    fld_1 integer
+);
+
+INSERT INTO tbl_index_case_2 (fld_1)
+    select generate_series(1, 10);
+	
+do $$
+begin
+    for counter in 1..1100 loop
+        perform * from tbl_index_case_2 where fld_1 = 1;
+    end loop;
+end$$;
+
+INSERT INTO tbl_index_case_2 (fld_1)
+    select generate_series(1, 250000);
+
+analyze public.tbl_index_case_2;
+-----------------------------
+-- table with missed index
+drop table if exists public.tbl_index_case_3;
+CREATE TABLE public.tbl_index_case_3
+(
+    id bigserial,
+    fld_1 integer,
+	CONSTRAINT tbl_index_case_3_pkey PRIMARY KEY (id)
+);
+
+INSERT INTO tbl_index_case_3 (fld_1)
+    select generate_series(1, 250000);
+
+do $$
+begin
+    for counter in 1..1100 loop
+		-- emulate seq_tup_read/seq_scan > 1000
+        perform * from tbl_index_case_3 limit 20000;
+    end loop;
+end$$;
+
+analyze public.tbl_index_case_3;
 -----------------------------
 -- fk test data
 drop table if exists public.tbl_a cascade;

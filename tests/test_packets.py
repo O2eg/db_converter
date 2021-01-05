@@ -6,6 +6,7 @@ from db_converter import *
 import psc.postgresql as postgresql
 from actiontracker import ActionTracker
 import pyzipper
+import difflib
 from unittest import mock
 from test_psc import *
 
@@ -48,7 +49,8 @@ class TestDBCPackets(unittest.TestCase):
                 'test_py_step',
                 'test_override_conf_param',
                 'test_placeholders',
-                'test_get_version'
+                'test_get_version',
+                'test_dba_idx_diag'
             ]
         ]
         packets.sort()
@@ -869,6 +871,97 @@ class TestDBCAllSeq(unittest.TestCase):
 
         self.assertTrue(res.packet_status[self.target_db] == PacketStatus.DONE)
         self.assertTrue(res.result_code[self.target_db] == ResultCode.SUCCESS)
+
+
+class TestDBCPacketWithTestData(unittest.TestCase):
+    conf_file = 'db_converter_test.conf'
+    db_name = 'test_dbc_03'     # this database is recreated for each packet unit test
+    test_packet_names = []
+    packets_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+        "packets"
+    )
+
+    def setUp(self):
+        del self.test_packet_names[:]
+
+        self.test_packet_names = [
+            (f[5:], f) for f in os.listdir(self.packets_dir)
+            if f.startswith('test_') and os.path.isdir(os.path.join(self.packets_dir, f)) and
+                os.path.isdir(os.path.join(self.packets_dir, f[5:])) and
+                f not in ('test_dba_clone_schema')
+        ]
+        self.test_packet_names.sort()
+
+    def test_packets(self):
+        parser = DBCParams.get_arg_parser()
+
+        args = parser.parse_args([
+            # set any --packet-name for initialization
+            '--packet-name=test_common', '--db-name=' + self.db_name, '--list'
+        ])
+        dbc = MainRoutine(args, self.conf_file)
+
+        def cleanup():
+            db_conn = postgresql.open(dbc.sys_conf.dbs_dict['pg_db'])
+
+            db_conn.execute("""
+                SELECT pg_terminate_backend(pid)
+                FROM pg_stat_activity
+                WHERE pid <> pg_backend_pid()
+                    AND datname = '%s'
+            """ % self.db_name)
+
+            db_conn.execute("""DROP DATABASE IF EXISTS %s""" % self.db_name)
+            db_conn.execute("""
+                CREATE DATABASE %s
+                    WITH
+                    OWNER = postgres
+                    ENCODING = 'UTF8'
+                    LC_COLLATE = 'en_US.UTF-8'
+                    LC_CTYPE = 'en_US.UTF-8'
+                    TABLESPACE = pg_default
+                    template = template0""" % self.db_name)
+            db_conn.close()
+
+        for packet in self.test_packet_names:
+            print("TestDBCPacketWithTestData: testing %s -> %s" % (packet[0], packet[1]))
+            cleanup()
+            # run test packet
+            MainRoutine(parser.parse_args([
+                '--packet-name=' + packet[1],
+                '--db-name=' + self.db_name
+            ]), self.conf_file).run()
+
+            # run main packet
+            res_main_packet = MainRoutine(parser.parse_args([
+                '--packet-name=' + packet[0],
+                '--db-name=' + self.db_name
+            ]), self.conf_file).run()
+
+            for step, step_result in res_main_packet.result_data[self.db_name].items():
+                step_result_text = to_json(step_result, formatted=True)
+                # if *.sql_out_orig not exists then save result of main packet to *.sql_out_orig
+                if not os.path.isfile(os.path.join(self.packets_dir, packet[1], step + "_out")):
+                    print("Creating: %s" % (step + "_out"))
+                    out_file = open(os.path.join(self.packets_dir, packet[1], step + "_out"), "w", encoding="utf8")
+                    out_file.write(step_result_text)
+                    out_file.close()
+                else:
+                    orig_out_file = open(
+                        os.path.join(self.packets_dir, packet[1], step + "_out"),
+                        "r",
+                        encoding="utf8"
+                    )
+                    orig_out = orig_out_file.read()
+                    orig_out_file.close()
+                    if orig_out != step_result_text:
+                        for line in difflib.unified_diff(orig_out.splitlines(), step_result_text.splitlines()):
+                            print(line.rstrip())
+                        print("Validating: %s FAIL" % step)
+                        self.assertTrue(False)
+                    else:
+                        print("Validating: %s OK" % step)
 
 
 if __name__ == '__main__':

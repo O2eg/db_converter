@@ -1,0 +1,17 @@
+[
+    [
+        [
+            "Checking for missing primary key or unique index..."
+        ]
+    ],
+    [
+        [
+            "public",
+            "tbl_index_case"
+        ],
+        [
+            "public",
+            "tbl_index_case_2"
+        ]
+    ]
+]

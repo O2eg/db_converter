@@ -350,6 +350,7 @@ class DBCResult:
     packet_type = None
     result_code = None
     packet_status = None
+    result_data = None
 
 
 class MainRoutine(DBCParams, DBCCore):
@@ -367,6 +368,7 @@ class MainRoutine(DBCParams, DBCCore):
     #     hash: 'text'
     # }
 
+    result_data = {}
     dbs = []        # lists of databases for processing
 
     def terminate_conns(self, db_conn, db_name, app_name, packet, terminate=True):
@@ -524,6 +526,7 @@ class MainRoutine(DBCParams, DBCCore):
         self.result_code.clear()
         self.packet_status.clear()
         self.db_packet_status.clear()
+        self.result_data.clear()
         self.workers_result.clear()
         self.workers_db_pid.clear()
         self.worker_threads.clear()
@@ -743,6 +746,7 @@ class MainRoutine(DBCParams, DBCCore):
         result.packet_type = self.packet_type
         result.result_code = self.result_code.copy()
         result.packet_status = self.packet_status.copy()
+        result.result_data = self.result_data.copy()
 
         self.cleanup()
         return result

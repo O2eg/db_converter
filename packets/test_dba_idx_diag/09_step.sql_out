@@ -1,0 +1,16 @@
+[
+    [
+        [
+            "Checking for tables without indexes..."
+        ]
+    ],
+    [
+        [
+            "public",
+            "tbl_index_case_2",
+            "11 MB",
+            1100,
+            11000
+        ]
+    ]
+]
