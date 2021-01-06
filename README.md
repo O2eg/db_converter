@@ -120,9 +120,9 @@ Built-in module [py-postgresql](https://github.com/python-postgres/fe).
 * DML (Data Manipulation Language) - SELECT, INSERT, UPDATE, DELETE
 * DCL (Data Control Language) - GRAND, REVOKE
 
-**Action** - is a transaction formed on the basis of `step`. If `step` does not have a `generator`, then it creates one `action`. If `step` has a `generator`, then several transactions are generated.
+**Action** - is a transaction formed on the basis of `step`. If `step` does not have a `generator`, then it creates one `action`. If `step` has a `generator`, then several transactions will be generated.
 
-**Generator** - is a sql file associated with some `step` by index number. If there is a `generator`, `step` contains placeholders for substituting the values ​​returned by `generator` (for more details see the "Generators and Placeholders" section).
+**Generator** - is a sql file associated with some `step` by index number. If there is a `generator`, `step` contains placeholders for substituting the values returned by `generator` (for more details see the "Generators and Placeholders" section).
 
 **Conversion** (migration, deployment) - is a transformation of the database structure according to specified package of changes.
 
@@ -169,7 +169,7 @@ In all deployment modes two parameters are mandatory:
 
 * `--db-name` - name of directory located in `packets`
 
-* `--packet-name` - a name of one database or a list of databases separated by commas, or `ALL` to automatically substitute all databases listed in `db_converter.conf`
+* `--packet-name` - a name of one database or a comma-separated list of databases, or `ALL` to automatically substitute all databases listed in `db_converter.conf`
 
 # Documentation
 
@@ -186,9 +186,15 @@ In all deployment modes two parameters are mandatory:
 
 # Roadmap
 
-* Database versioning
+* Synchronization of packets between source and target databases
+* Query bot in mattermost: running packets from browser instead of command line
 * Web interface
-* Query bot
+* * scheduling periodic tasks to run
+* * packets developing
+* * testing
+* * approving
+* * delivery for production
+* * viewing logs and deployment statuses
 
 # Support and contributions
 
