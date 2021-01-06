@@ -841,7 +841,7 @@ class TestDBCAllSeq(unittest.TestCase, CommonVars):
         self.assertTrue(res.result_code[self.test_dbc_02] == ResultCode.SUCCESS)
 
 
-class TestDBCPacketWithTestData(unittest.TestCase, CommonVars):
+class DBCPacketUnitTest(unittest.TestCase, CommonVars):
     test_packet_names = []
 
     def setUp(self):
@@ -887,7 +887,7 @@ class TestDBCPacketWithTestData(unittest.TestCase, CommonVars):
             db_conn.close()
 
         for packet in self.test_packet_names:
-            print("TestDBCPacketWithTestData: testing %s -> %s" % (packet[0], packet[1]))
+            print("DBCPacketUnitTest: testing %s -> %s" % (packet[0], packet[1]))
             cleanup()
             # run test packet
             MainRoutine(parser.parse_args([
