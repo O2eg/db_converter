@@ -190,7 +190,7 @@ In all deployment modes two parameters are mandatory:
 * Query bot in mattermost: running packets from browser instead of command line
 * Web interface (command line replacement, collaborative work)
 * * scheduling periodic tasks to run
-* * packets developing
+* * packets development
 * * testing
 * * approving
 * * delivery to production
