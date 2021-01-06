@@ -188,12 +188,12 @@ In all deployment modes two parameters are mandatory:
 
 * Synchronization of packets between source and target databases
 * Query bot in mattermost: running packets from browser instead of command line
-* Web interface
+* Web interface (command line replacement, collaborative work)
 * * scheduling periodic tasks to run
 * * packets developing
 * * testing
 * * approving
-* * delivery for production
+* * delivery to production
 * * viewing logs and deployment statuses
 
 # Support and contributions
