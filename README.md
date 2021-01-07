@@ -50,6 +50,7 @@ Tasks that can be solved using `db_converter`:
 
 The key features are:
 
+* Only plain SQL scripts with placeholders
 * Parallel processing of several databases
 * Handling of the locks to avoid impact on the regular workload
 
