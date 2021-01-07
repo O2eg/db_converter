@@ -22,6 +22,8 @@
 </p>
 
 `db_converter` is an open-source database migration tool for PostgreSQL 9.6+ designed for high loaded installations.
+  
+With `db_converter` complex tasks become easier.
 
 # Table of contents
 
