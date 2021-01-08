@@ -25,6 +25,10 @@
   
 With `db_converter` complex tasks become easier.
 
+<p align="center">
+  <img src="doc/dbc_usage.png">
+</p>
+
 # Table of contents
 
 <!--ts-->
