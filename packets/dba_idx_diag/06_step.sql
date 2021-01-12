@@ -15,7 +15,7 @@ select
 		n_source.nspname,
 		c_source.relname,
 		ar.attname
-	)
+	) as idx_def
 from pg_constraint con
 join pg_class c_target ON con.confrelid = c_target.oid
 join pg_class c_source ON con.conrelid = c_source.oid
