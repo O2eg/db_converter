@@ -21,7 +21,7 @@
     </a>
 </p>
 
-`db_converter` is an open-source database migration tool for PostgreSQL 9.6+ designed for high loaded installations.
+`db_converter` is an open-source database migration tool for PostgreSQL 9.6+ designed for high-loaded installations.
   
 With `db_converter` complex tasks become easier.
 
@@ -44,7 +44,7 @@ With `db_converter` complex tasks become easier.
 
 # Introduction
 
-The basic goal of `db_converter` is to simplify the database conversion (migration) process as much as possible, while maintaining flexibility and functionality.
+The basic goal of `db_converter` is to simplify the database conversion (migration) process as much as possible while maintaining flexibility and functionality.
 
 Tasks that can be solved using `db_converter`:
 
@@ -52,7 +52,7 @@ Tasks that can be solved using `db_converter`:
 * Database [structure changing](https://github.com/masterlee998/db_converter/tree/master/packets/test_int4_to_int8) with locks control
 * System and application [notifications](https://github.com/masterlee998/db_converter/wiki/Use-cases#alerts-examples) via `mattermost` (or any other messenger)
 * Database maintenance ([deleting](https://github.com/masterlee998/db_converter/wiki/Use-cases#delete-old-data-from-huge-table) old data, creating new [schemas](https://github.com/masterlee998/db_converter/blob/master/packets/dba_clone_schema/01_step.sql), etc.)
-* [Export](https://github.com/masterlee998/db_converter/tree/master/packets/test_export_data) data in `csv` format into encrypted archive
+* [Export](https://github.com/masterlee998/db_converter/tree/master/packets/test_export_data) data in `csv` format into an encrypted archive
 
 The key features are:
 
@@ -119,26 +119,26 @@ Built-in module [py-postgresql](https://github.com/python-postgres/fe).
 
 # Terminology
 
-**Packet** - is a package of changes (a directory with sql files) that apply to the specified database. Packet contains `meta_data.json` (an optional file with meta information describing the package) and several sql files in `XX_step.sql` format.
+**Packet** - is a package of changes (a directory with SQL files) that apply to the specified database. Packet contains `meta_data.json` (an optional file with meta-information describing the package) and several SQL files in `XX_step.sql` format.
 
-**Step** - is a sql file, the contents of which are executed in one transaction, and containing the following types of commands:
+**Step** - is a SQL file, the contents of which are executed in one transaction, and containing the following types of commands:
 
 * DDL (Data Definition Language) - CREATE, DROP, ALTER, TRUNCATE, COMMENT, RENAME
 * DML (Data Manipulation Language) - SELECT, INSERT, UPDATE, DELETE
 * DCL (Data Control Language) - GRAND, REVOKE
 
-**Action** - is a transaction formed on the basis of `step`. If `step` does not have a `generator`, then it creates one `action`. If `step` has a `generator`, then several transactions will be generated.
+**Action** - is a transaction formed on the basis of `step`. If the `step` does not have a `generator`, then it creates one `action`. If the `step` has a `generator`, then several transactions will be generated.
 
-**Generator** - is a sql file associated with some `step` by index number. If there is a `generator`, `step` contains placeholders for substituting the values returned by `generator` (for more details see the "Generators and Placeholders" section).
+**Generator** - is a SQL file associated with some `step` by index number. If there is a `generator`, the `step` contains placeholders for substituting the values returned by the `generator` (for more details see the "Generators and Placeholders" section).
 
-**Conversion** (migration, deployment) - is a transformation of the database structure according to specified package of changes.
+**Conversion** (migration, deployment) - is a transformation of the database structure according to the specified package of changes.
 
 <p align="center">
   <img src="doc/dbc_common_flow.png">
 </p>
 
 
-When executing `Packet`, sql files are applied to the specified database sequentially in accordance with index.
+When executing `Packet`, SQL files are applied to the specified database sequentially by the index.
 
 # Usage modes
 
@@ -146,11 +146,11 @@ When executing `Packet`, sql files are applied to the specified database sequent
 
 * **List** all target databases according `--db-name` mask if the `--list` key is specified
 
-* **Perform deployment** - deploy specified `packet` to the target database `--db-name`
+* **Perform deployment** - deploy the specified `packet` to the target database `--db-name`
 
-* **Perform force deployment** - forced deployment if the `--force` key is specified - ignore the difference between hashes of `packet` at the time of repeated execution and at the time of first launch
+* **Perform force deployment** - forced deployment if the `--force` key is specified - ignore the difference between hashes of a `packet` at the time of repeated execution and at the time of the first launch
 
-* **Perform sequential deployment** if the `--seq` key is specified, then parallel execution is disabled (if several databases are specified) and all databases are processed sequentially according to the specified list. Several databases can be processed in parallel, the possibility of parallelizing the conversion of one database does not make sense.
+* **Perform sequential deployment** if the `--seq` key is specified, then parallel execution is disabled (if several databases are selected), and all databases are processed sequentially according to the selected list. db_converter can process several databases in parallel. The possibility of parallelizing the conversion of one database does not make sense.
 
 * **Check** packet status - display `packet` status if the `--status` key is specified
 
@@ -158,13 +158,13 @@ When executing `Packet`, sql files are applied to the specified database sequent
 
 * **Unlock** unexpectedly aborted deployment if the `--unlock` key is specified
 
-* **Stop** all active transactions of unexpectedly aborted deployment if the `--stop` key is specified. It this mode all active connections will be terminated matching with `application_name` *(specified in the `db_converter.conf` configuration file)* + `"_"` + `--packet-name`
+* **Stop** all active transactions of unexpectedly aborted deployment if the `--stop` key is specified. It this mode, all active connections will be terminated matching with `application_name` *(specified in the `db_converter.conf` configuration file)* + `"_"` + `--packet-name`
 
 * **Use template packet** - copy `*.sql` files from `packets/templates/template` to `packets/packet-name` if the `--template` key is specified
 
-Auxiliary deployment modes are also provided:
+Auxiliary deployment modes also provided:
 
-* **Skip whole step** on first error like `Deadlock`, `QueryCanceledError` if the `--skip-step-cancel` key is specified
+* **Skip the whole step** on the first error like `Deadlock`, `QueryCanceledError` if the `--skip-step-cancel` key is specified
 
 * **Skip action errors** like `Deadlock`, `QueryCanceledError` if the `--skip-action-cancel` key is specified
 
@@ -172,9 +172,9 @@ Auxiliary deployment modes are also provided:
   <img src="doc/dbc_aux_modes.png">
 </p>
 
-In all deployment modes two parameters are mandatory:
+In all deployment modes, two parameters are mandatory:
 
-* `--db-name` - name of directory located in `packets`
+* `--db-name` - a name of directory located in `packets`
 
 * `--packet-name` - a name of one database or a comma-separated list of databases, or `ALL` to automatically substitute all databases listed in `db_converter.conf`
 
@@ -193,8 +193,8 @@ In all deployment modes two parameters are mandatory:
 
 # Roadmap
 
-* Synchronization of packets between source and target databases
-* Query bot in mattermost: running packets from browser instead of command line
+* Synchronization of packets between a source and target databases
+* Query bot in mattermost: running packets from the browser instead of command line
 * Web interface (command line replacement, collaborative work)
 * * scheduling periodic tasks to run
 * * packets development
