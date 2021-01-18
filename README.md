@@ -44,7 +44,7 @@ With `db_converter` complex tasks become easier.
 
 # Introduction
 
-The basic goal of `db_converter` is to simplify the database conversion (migration) process as much as possible while maintaining flexibility and functionality.
+The primary goal of `db_converter` is to simplify the database conversion (migration) process as much as possible while maintaining flexibility and functionality.
 
 Tasks that can be solved using `db_converter`:
 
@@ -52,7 +52,7 @@ Tasks that can be solved using `db_converter`:
 * Database [structure changing](https://github.com/masterlee998/db_converter/tree/master/packets/test_int4_to_int8) with locks control
 * System and application [notifications](https://github.com/masterlee998/db_converter/wiki/Use-cases#alerts-examples) via `mattermost` (or any other messenger)
 * Database maintenance ([deleting](https://github.com/masterlee998/db_converter/wiki/Use-cases#delete-old-data-from-huge-table) old data, creating new [schemas](https://github.com/masterlee998/db_converter/blob/master/packets/dba_clone_schema/01_step.sql), etc.)
-* [Export](https://github.com/masterlee998/db_converter/tree/master/packets/test_export_data) data in `csv` format into an encrypted archive
+* [Export](https://github.com/masterlee998/db_converter/tree/master/packets/test_export_data) data in `CSV` format into an encrypted archive
 
 The key features are:
 
