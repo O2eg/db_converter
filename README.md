@@ -33,8 +33,8 @@ With `db_converter` complex tasks become easier.
 
 <!--ts-->
    * [Introduction](#introduction)
-   * [How to run](#how-to-run)
    * [Dependencies and installation](#dependencies-and-installation)
+   * [How to run](#how-to-run)
    * [Terminology](#terminology)
    * [Usage modes](#usage-modes)
    * [Documentation](#documentation)
@@ -59,6 +59,22 @@ The key features are:
 * Only plain SQL scripts with placeholders
 * Parallel processing of several databases
 * Handling of the locks to avoid impact on the regular workload
+
+# Dependencies and installation
+
+Python 3.x with modules: `sqlparse`, `requests`, `pyzipper`
+
+```bash
+yum install -y python38
+# if pip is not installed
+curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+python3.8 get-pip.py
+pip3.8 install sqlparse
+pip3.8 install requests
+pip3.8 install pyzipper
+```
+
+Built-in module [py-postgresql](https://github.com/python-postgres/fe).
 
 # How to run
 
@@ -100,22 +116,6 @@ python38 tests/test_packets.py -v
 # run specific test
 python38 tests/test_packets.py -v TestDBCLock
 ```
-
-# Dependencies and installation
-
-Python 3.x with modules: `sqlparse`, `requests`, `pyzipper`
-
-```bash
-yum install -y python38
-# if pip is not installed
-curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-python3.8 get-pip.py
-pip3.8 install sqlparse
-pip3.8 install requests
-pip3.8 install pyzipper
-```
-
-Built-in module [py-postgresql](https://github.com/python-postgres/fe).
 
 # Terminology
 
