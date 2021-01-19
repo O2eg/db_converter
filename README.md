@@ -65,7 +65,7 @@ The key features are:
 Python 3.x with modules: `sqlparse`, `requests`, `pyzipper`
 
 ```bash
-yum install -y python38
+yum install -y python38    # if Python 3.x is not installed
 # if pip is not installed
 curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 python3.8 get-pip.py
@@ -76,11 +76,33 @@ pip3.8 install pyzipper
 
 Built-in module [py-postgresql](https://github.com/python-postgres/fe).
 
-# How to run
+# How to install and run
+
+First, needs to install python and modules (see the section [above](https://github.com/masterlee998/db_converter#dependencies-and-installation)).
+
+Next, clone `db_converter` from GitHub:
+
+```bash
+git clone https://github.com/masterlee998/db_converter.git
+cd db_converter
+python3 db_converter.py --version
+>> Version 1.3
+```
+
+Prepare `db_converter.conf`:
+
+```bash
+mv conf/db_converter.conf.example conf/db_converter.conf
+# set connection credentials to the database
+test_conn='pq:\/\/some_user:password@127.0.0.1:5400\/test_db_1'
+sudo sed -ie "s/^test_db_1.*/dbc = $test_conn/" conf/db_converter.conf
+```
+
+Run dba packet:
 
 ```bash
 # run read-only packet
-python38 db_converter.py \
+python3 db_converter.py \
 	--packet-name=dba_get_conf \
 	--db-name=dbc
 
@@ -104,7 +126,7 @@ python38 db_converter.py \
 
 
 # run in background
-nohup python38 db_converter.py \
+nohup python3 db_converter.py \
 	--packet-name=my_packet \
 	--db-name=db01
     > /dev/null 2>&1 &
@@ -112,9 +134,9 @@ nohup python38 db_converter.py \
 tail -f log/dbc_db01_my_packet.log
 
 # run all tests
-python38 tests/test_packets.py -v
+python3 tests/test_packets.py -v
 # run specific test
-python38 tests/test_packets.py -v TestDBCLock
+python3 tests/test_packets.py -v TestDBCLock
 ```
 
 # Terminology
