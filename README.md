@@ -98,7 +98,7 @@ test_conn='pq:\/\/some_user:password@127.0.0.1:5400\/test_db_1'
 sudo sed -ie "s/^test_db_1.*/dbc = $test_conn/" conf/db_converter.conf
 ```
 
-Run dba packet:
+Run `dba_get_conf` packet (just displays [basic DB configuration](https://github.com/masterlee998/db_converter/blob/master/packets/dba_get_conf/01_step.sql) options):
 
 ```bash
 # run read-only packet
