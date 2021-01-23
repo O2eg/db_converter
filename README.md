@@ -76,6 +76,16 @@ pip3.8 install pyzipper
 
 Built-in module [py-postgresql](https://github.com/python-postgres/fe).
 
+# Fast start
+
+Download and run container:
+
+```bash
+docker pull masterlee998/db_converter:dbc_pg13
+docker run --name dbc -d masterlee998/db_converter:dbc_pg13
+docker exec -it dbc bash
+```
+
 # How to install and run
 
 First, needs to install python and modules (see the section [above](https://github.com/masterlee998/db_converter#dependencies-and-installation)).
