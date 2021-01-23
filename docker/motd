@@ -1,0 +1,29 @@
+=============================================
+# Documentation
+https://github.com/masterlee998/db_converter/wiki
+=============================================
+# Run read-only packet
+dbc --packet-name=dba_get_conf \
+	--db-name=test_db
+=============================================
+# Create a new packet
+mkdir -p packets/example
+
+cat > packets/example/01_step.sql << EOL
+	SELECT 'example' as t;
+EOL
+
+cat > packets/example/meta_data.json  << EOL
+{
+	"type": "maintenance"
+}
+EOL
+
+dbc --packet-name=example \
+	--db-name=test_db
+=============================================
+# Run tests
+coverage run --source=dbccore,psc/psccommon,psc/psclogger,actiontracker,matterhook,db_converter \
+	tests/test_packets.py -v
+coverage report
+=============================================
