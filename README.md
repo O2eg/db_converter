@@ -35,7 +35,7 @@ With `db_converter` complex tasks become easier.
    * [Introduction](#introduction)
    * [Dependencies and installation](#dependencies-and-installation)
    * [Fast start](#fast-start)
-   * [How to run](#how-to-run)
+   * [How to install and run](#how-to-install-and-run)
    * [Terminology](#terminology)
    * [Usage modes](#usage-modes)
    * [Documentation](#documentation)
