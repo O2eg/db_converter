@@ -34,6 +34,7 @@ With `db_converter` complex tasks become easier.
 <!--ts-->
    * [Introduction](#introduction)
    * [Dependencies and installation](#dependencies-and-installation)
+   * [Fast start](#fast-start)
    * [How to run](#how-to-run)
    * [Terminology](#terminology)
    * [Usage modes](#usage-modes)
