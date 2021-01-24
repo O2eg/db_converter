@@ -19,6 +19,9 @@
     <a href="#">
         <img alt="Platforms" src="https://img.shields.io/badge/platforms-Windows%20%7C%20Linux-success.svg">
     </a>
+    <a href="#">
+        <img alt="Python" src="https://img.shields.io/badge/python-3.6--3.9-blue">
+    </a>
 </p>
 
 `db_converter` is an open-source database migration tool for PostgreSQL 9.6+ designed for high-loaded installations.
