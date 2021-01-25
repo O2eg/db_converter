@@ -1,0 +1,33 @@
+[databases]
+test_db_1 = pq://some_user:password@127.0.0.1:5400/test_db_1
+test_db_2 = pq://some_user:password@127.0.0.1:5400/test_db_2
+test_db_3 = pq://some_user:password@127.0.0.1:5400/test_db_3
+
+[main]
+application_name = db_converter
+lock_observer_sleep_interval = 5
+execute_sql = True             # Set "False" to prevent SQL executing in database
+conn_exception_sleep_interval = 5
+cancel_wait_tx_timeout = '3 minutes'
+cancel_blocker_tx_timeout = '60 seconds'
+detailed_traceback = False
+db_name_all_confirmation = True
+schema_location = dbc
+
+[log]
+log_level = Debug                # Debug, Info, Error
+log_sql = 1
+file_maxmbytes = 50
+file_backupcount = 5
+
+[matterhook]
+url = https://mattermost.company.net:1443
+chat_keys = dbc-alert/xaqx3323eyjs8e,dbc-dba/xaqx3323eyjs8e,dbc-maint/xaqx3323eyjs8e,dbc-migr/xaqx3323eyjs8e,dbc-test/xaqx3323eyjs8e
+
+[postgresql]
+deadlock_timeout = 1ms
+statement_timeout = 9h
+vacuum_cost_limit = 5000
+work_mem = 200MB
+maintenance_work_mem = 1GB
+timezone = Europe/Moscow
