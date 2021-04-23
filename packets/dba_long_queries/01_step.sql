@@ -12,10 +12,11 @@ select
         then date_trunc('milliseconds', now() - xact_start)
         else '00:00:00'
     end as xact_start_age,
+    greatest(age(backend_xmin), age(backend_xid)) as query_age_in_tx,
     application_name as app_name,
     wait_event_type,
     wait_event
 from pg_stat_activity
 where state in ('active', 'idle in transaction') and pid <> pg_backend_pid()
-order by state_change asc
+order by xact_start_age desc
 limit 20;
