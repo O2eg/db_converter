@@ -1,3 +1,3 @@
-from matterhook.incoming import Webhook
+from matterhook.incoming import MatterWebhook
 
-__all__ = ['Webhook']
+__all__ = ['MatterWebhook']

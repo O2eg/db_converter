@@ -1,6 +1,6 @@
 import requests
 
-__all__ = ['Webhook']
+__all__ = ['MatterWebhook']
 
 
 class InvalidPayload(Exception):
@@ -11,7 +11,7 @@ class HTTPError(Exception):
     pass
 
 
-class Webhook(object):
+class MatterWebhook(object):
     """
     Interacts with a Mattermost incoming webhook.
     """
