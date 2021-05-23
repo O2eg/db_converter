@@ -1,0 +1,4 @@
+sqlparse
+requests
+pyzipper
+slack-sdk
