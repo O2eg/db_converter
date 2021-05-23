@@ -66,7 +66,7 @@ The key features are:
 
 # Dependencies and installation
 
-Python 3.x with modules: `sqlparse`, `requests`, `pyzipper`
+Python 3.x with modules: `sqlparse`, `requests`, `pyzipper`, `slack-sdk`
 
 ```bash
 yum install -y python38    # if Python 3.x is not installed
@@ -75,6 +75,7 @@ curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 python3.8 get-pip.py
 pip3.8 install sqlparse
 pip3.8 install requests
+pip3.8 install slack-sdk
 pip3.8 install pyzipper
 ```
 
