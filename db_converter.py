@@ -82,30 +82,25 @@ class SysConf:
         self.timezone = get_key('postgresql', 'timezone', 'UTC')
 
         self.mattermost_hooks_conf = {}
-        try:
-            self.mattermost_hooks_conf["url"] = read_conf_param_value(self.config['mattermost_hooks']['url'])
-            chats_keys = read_conf_param_value(self.config['mattermost_hooks']['chat_keys']).split(',')
-            chats_keys_dict = {}
-            for chat_key in chats_keys:
-                item = chat_key.split('/')
-                chats_keys_dict[item[0]] = item[1]
-
-            self.mattermost_hooks_conf["chat_keys"] = chats_keys_dict
-        except KeyError:
-            self.mattermost_hooks_conf = None
-
         self.slack_hooks_conf = {}
-        try:
-            self.slack_hooks_conf["url"] = read_conf_param_value(self.config['slack_hooks']['url'])
-            chats_keys = read_conf_param_value(self.config['slack_hooks']['hooks']).split(',')
-            chats_keys_dict = {}
-            for chat_key in chats_keys:
-                item = chat_key.split('=')
-                chats_keys_dict[item[0]] = item[1]
 
-            self.slack_hooks_conf["hooks"] = chats_keys_dict
-        except KeyError:
-            self.slack_hooks_conf = None
+        def init_hooks(hook_type, delimiter):
+            hooks_conf = {}
+            try:
+                hooks_conf["url"] = read_conf_param_value(self.config[hook_type]['url'])
+                chats_keys = read_conf_param_value(self.config[hook_type]['chat_keys']).split(',')
+                chats_keys_dict = {}
+                for chat_key in chats_keys:
+                    item = chat_key.split(delimiter)
+                    chats_keys_dict[item[0]] = item[1]
+
+                hooks_conf["chat_keys"] = chats_keys_dict
+            except KeyError:
+                return None
+            return hooks_conf
+
+        self.mattermost_hooks_conf = init_hooks('mattermost_hooks', '/')
+        self.slack_hooks_conf = init_hooks('slack_hooks', '=')
 
 
 class DBCParams:

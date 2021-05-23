@@ -630,7 +630,10 @@ class DBCCore:
         try:
             if "hook" in ctx.meta_data_json and len(results) > 0:
                 if ctx.meta_data_json["hook"]["type"] in ("mattermost", "slack") and \
-                        hasattr(self, 'mattermost_hooks') and self.mattermost_hooks is not None:
+                        (
+                                (hasattr(self, 'mattermost_hooks') and self.mattermost_hooks is not None) or \
+                                (hasattr(self, 'slack_hooks') and self.slack_hooks is not None)
+                        ):
 
                     # ========================================================================================
                     if ctx.meta_data_json["hook"]["type"] == "mattermost":
@@ -683,25 +686,17 @@ class DBCCore:
                                 any_item = True
 
                     if any_item:
-                        if ctx.meta_data_json["hook"]["channel"] not in self.mattermost_hooks and \
-                                ctx.meta_data_json["hook"]["channel"] not in self.slack_hooks:
-                            self.logger.log(
-                                'resultset_hook: Channel "%s" not found!' % (ctx.meta_data_json["hook"]["channel"]),
-                                "Error",
-                                do_print=True
+                        if ctx.meta_data_json["hook"]["type"] == "mattermost":
+                            self.mattermost_hooks[ctx.meta_data_json["hook"]["channel"]].send(
+                                msg,
+                                channel=ctx.meta_data_json["hook"]["channel"],
+                                username=ctx.meta_data_json["hook"]["username"]
+                                if "username" in ctx.meta_data_json["hook"] else "db_converter"
                             )
-                        else:
-                            if ctx.meta_data_json["hook"]["type"] == "mattermost":
-                                self.mattermost_hooks[ctx.meta_data_json["hook"]["channel"]].send(
-                                    msg,
-                                    channel=ctx.meta_data_json["hook"]["channel"],
-                                    username=ctx.meta_data_json["hook"]["username"]
-                                    if "username" in ctx.meta_data_json["hook"] else "db_converter"
-                                )
-                            if ctx.meta_data_json["hook"]["type"] == "slack":
-                                self.slack_hooks[ctx.meta_data_json["hook"]["channel"]].send(text=msg)
+                        if ctx.meta_data_json["hook"]["type"] == "slack":
+                            self.slack_hooks[ctx.meta_data_json["hook"]["channel"]].send(text=msg)
 
-                            self.logger.log('"resultset_hook":\n%s' % msg, "Debug", do_print=True)
+                        self.logger.log('"resultset_hook":\n%s' % msg, "Debug", do_print=True)
         except:
             exception_descr = exception_helper(self.sys_conf.detailed_traceback)
             self.logger.log(
