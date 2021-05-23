@@ -54,7 +54,7 @@ Tasks that can be solved using `db_converter`:
 
 * Transactional [modification of data](https://github.com/masterlee998/db_converter/wiki/Use-cases#update-all-records-in-huge-table) of any volume
 * Database [structure changing](https://github.com/masterlee998/db_converter/tree/master/packets/test_int4_to_int8) with locks control
-* System and application [notifications](https://github.com/masterlee998/db_converter/wiki/Use-cases#alerts-examples) via `mattermost` (or any other messenger)
+* System and application [notifications](https://github.com/masterlee998/db_converter/wiki/Use-cases#alerts-examples) via `mattermost` or `slack`
 * Database maintenance ([deleting](https://github.com/masterlee998/db_converter/wiki/Use-cases#delete-old-data-from-huge-table) old data, creating new [schemas](https://github.com/masterlee998/db_converter/blob/master/packets/dba_clone_schema/01_step.sql), etc.)
 * [Export](https://github.com/masterlee998/db_converter/tree/master/packets/test_export_data) data in `CSV` format into an encrypted archive
 
@@ -230,7 +230,7 @@ In all deployment modes, two parameters are mandatory:
 # Roadmap
 
 * Synchronization of packets between a source and target databases
-* Query bot in mattermost: running packets from the browser instead of command line
+* Query bot in mattermost and slack: running packets from the browser instead of command line
 * Web interface (command line replacement, collaborative work)
 * * scheduling periodic tasks to run
 * * packets development
