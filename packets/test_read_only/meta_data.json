@@ -4,7 +4,7 @@
 	"description": "no test packet",
 	"type": "read_only",
 	"hook": {
-		"type": "matterhook",
+		"type": "mattermost",
 		"username": "db_converter",
 		"channel": "dbc-test",
 		"message": "Message from test packet :ant:"

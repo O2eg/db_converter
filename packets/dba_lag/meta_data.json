@@ -3,7 +3,7 @@
 	"description": "get replication lag",
 	"type": "read_only",
 	"hook": {
-		"type": "matterhook",
+		"type": "mattermost",
 		"username": "db_converter",
 		"channel": "dbc-dba",
 		"message": "Current replication lag in bytes:"

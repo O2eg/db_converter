@@ -2,7 +2,7 @@
 	"type": "read_only",
 	"client_min_messages": "NOTICE",
 	"hook": {
-		"type": "matterhook",
+		"type": "mattermost",
 		"username": "db_converter",
 		"verbosity": ["raise"],
 		"channel": "dbc-alert",

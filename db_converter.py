@@ -6,7 +6,8 @@ from psc.psccommon.psc_common import *
 from psc.postgresql import exceptions
 import psc.postgresql as postgresql
 import logging
-from matterhook import Webhook
+from matterhook import MatterWebhook
+from slack_sdk.webhook import WebhookClient
 import json
 from actiontracker import ActionTracker
 from dbccore import *
@@ -80,18 +81,31 @@ class SysConf:
         self.maintenance_work_mem = get_key('postgresql', 'maintenance_work_mem', '1GB')
         self.timezone = get_key('postgresql', 'timezone', 'UTC')
 
-        self.matterhook_conf = {}
+        self.mattermost_hooks_conf = {}
         try:
-            self.matterhook_conf["url"] = read_conf_param_value(self.config['matterhook']['url'])
-            chats_keys = read_conf_param_value(self.config['matterhook']['chat_keys']).split(',')
+            self.mattermost_hooks_conf["url"] = read_conf_param_value(self.config['mattermost_hooks']['url'])
+            chats_keys = read_conf_param_value(self.config['mattermost_hooks']['chat_keys']).split(',')
             chats_keys_dict = {}
             for chat_key in chats_keys:
                 item = chat_key.split('/')
                 chats_keys_dict[item[0]] = item[1]
 
-            self.matterhook_conf["chat_keys"] = chats_keys_dict
+            self.mattermost_hooks_conf["chat_keys"] = chats_keys_dict
         except KeyError:
-            self.matterhook_conf = None
+            self.mattermost_hooks_conf = None
+
+        self.slack_hooks_conf = {}
+        try:
+            self.slack_hooks_conf["url"] = read_conf_param_value(self.config['slack_hooks']['url'])
+            chats_keys = read_conf_param_value(self.config['slack_hooks']['hooks']).split(',')
+            chats_keys_dict = {}
+            for chat_key in chats_keys:
+                item = chat_key.split('=')
+                chats_keys_dict[item[0]] = item[1]
+
+            self.slack_hooks_conf["hooks"] = chats_keys_dict
+        except KeyError:
+            self.slack_hooks_conf = None
 
 
 class DBCParams:
@@ -100,7 +114,8 @@ class DBCParams:
     args = None
     placeholders = {}
     is_terminate = False
-    matterhooks = None
+    mattermost_hooks = None
+    slack_hooks = None
     errors_count = 0
 
     @staticmethod
@@ -304,13 +319,19 @@ class DBCParams:
                 delay=1
             )
 
-            if self.sys_conf.matterhook_conf is not None:
-                self.matterhooks = {}
-                for chat, key in self.sys_conf.matterhook_conf["chat_keys"].items():
-                    self.matterhooks[chat] = Webhook(self.sys_conf.matterhook_conf["url"], key)
-
+            if self.sys_conf.mattermost_hooks_conf is not None:
+                self.matter_hooks = {}
+                for chat, key in self.sys_conf.matter_hooks_conf["chat_keys"].items():
+                    self.matter_hooks[chat] = MatterWebhook(self.sys_conf.matter_hooks_conf["url"], key)
             else:
-                self.matterhook = None
+                self.matter_hooks = None
+
+            if self.sys_conf.slack_hooks_conf is not None:
+                self.slack_hooks = {}
+                for hook, key in self.sys_conf.slack_hooks_conf["chat_keys"].items():
+                    self.slack_hooks[hook] = WebhookClient(self.sys_conf.slack_hooks_conf["url"] + "/" + key)
+            else:
+                self.slack_hooks = None
 
         except SystemExit as e:
             sys.exit(0)

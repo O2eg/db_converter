@@ -3,7 +3,7 @@
 	"description": "get current maintenance queries",
 	"type": "read_only",
 	"hook": {
-		"type": "matterhook",
+		"type": "mattermost",
 		"username": "db_converter",
 		"channel": "dbc-dba",
 		"message": "Active maintenance:"

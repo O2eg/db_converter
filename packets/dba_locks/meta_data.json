@@ -3,7 +3,7 @@
 	"description": "get locks by pairs",
 	"type": "read_only",
 	"hook": {
-		"type": "matterhook",
+		"type": "mattermost",
 		"username": "db_converter",
 		"channel": "dbc-dba",
 		"message": "Locks by pairs:"

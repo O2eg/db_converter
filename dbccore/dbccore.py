@@ -629,19 +629,30 @@ class DBCCore:
     def resultset_hook(self, ctx, results):
         try:
             if "hook" in ctx.meta_data_json and len(results) > 0:
-                if ctx.meta_data_json["hook"]["type"] == "matterhook" and \
-                        hasattr(self, 'matterhooks') and self.matterhooks is not None:
-                    msg = "#### :gear: %s: %s `->` %s\n" % (ctx.db_name, ctx.packet_name, ctx.step[0])
-                    if "message" in ctx.meta_data_json["hook"]:
-                        msg += ctx.meta_data_json["hook"]["message"]
+                if ctx.meta_data_json["hook"]["type"] in ("mattermost", "slack") and \
+                        hasattr(self, 'mattermost_hooks') and self.mattermost_hooks is not None:
+
+                    # ========================================================================================
+                    if ctx.meta_data_json["hook"]["type"] == "mattermost":
+                        msg = "#### :gear: %s: %s `->` %s\n" % (ctx.db_name, ctx.packet_name, ctx.step[0])
+                    if ctx.meta_data_json["hook"]["type"] == "slack":
+                        msg = ":gear: *%s: %s* `->` %s\n" % (ctx.db_name, ctx.packet_name, ctx.step[0])
 
                     if "show_parameters" in ctx.meta_data_json["hook"] and \
                             ctx.meta_data_json["hook"]["show_parameters"] in ("true", "True", "1"):
-                        msg += "\n #### Parameters: \n"
+                        if ctx.meta_data_json["hook"]["type"] == "mattermost":
+                            msg += "\n #### Parameters: \n"
+                        if ctx.meta_data_json["hook"]["type"] == "slack":
+                            msg += "\n *Parameters:* \n"
+
                         msg += "```\n"
                         for arg in vars(self.args):
                             msg += '%s = %s\n' % (arg, getattr(self.args, arg))
-                        msg += "```"
+                        msg += "```\n"
+
+                    if "message" in ctx.meta_data_json["hook"]:
+                        msg += ctx.meta_data_json["hook"]["message"]
+                    # ========================================================================================
 
                     any_item = False
                     for result in results:
@@ -672,19 +683,24 @@ class DBCCore:
                                 any_item = True
 
                     if any_item:
-                        if ctx.meta_data_json["hook"]["channel"] not in self.matterhooks:
+                        if ctx.meta_data_json["hook"]["channel"] not in self.mattermost_hooks and \
+                                ctx.meta_data_json["hook"]["channel"] not in self.slack_hooks:
                             self.logger.log(
                                 'resultset_hook: Channel "%s" not found!' % (ctx.meta_data_json["hook"]["channel"]),
                                 "Error",
                                 do_print=True
                             )
                         else:
-                            self.matterhooks[ctx.meta_data_json["hook"]["channel"]].send(
-                                msg,
-                                channel=ctx.meta_data_json["hook"]["channel"],
-                                username=ctx.meta_data_json["hook"]["username"]
-                                if "username" in ctx.meta_data_json["hook"] else "db_converter"
-                            )
+                            if ctx.meta_data_json["hook"]["type"] == "mattermost":
+                                self.mattermost_hooks[ctx.meta_data_json["hook"]["channel"]].send(
+                                    msg,
+                                    channel=ctx.meta_data_json["hook"]["channel"],
+                                    username=ctx.meta_data_json["hook"]["username"]
+                                    if "username" in ctx.meta_data_json["hook"] else "db_converter"
+                                )
+                            if ctx.meta_data_json["hook"]["type"] == "slack":
+                                self.slack_hooks[ctx.meta_data_json["hook"]["channel"]].send(text=msg)
+
                             self.logger.log('"resultset_hook":\n%s' % msg, "Debug", do_print=True)
         except:
             exception_descr = exception_helper(self.sys_conf.detailed_traceback)
@@ -1172,7 +1188,7 @@ class DBCCore:
     def raise_error_logic(self, ctx):
         try:
             if "hook" in ctx.meta_data_json:
-                if ctx.meta_data_json["hook"]["type"] == "matterhook" and self.matterhooks is not None:
+                if ctx.meta_data_json["hook"]["type"] == "mattermost" and self.mattermost_hooks is not None:
                     msg = "#### :comet: %s: %s `->` %s\n" % (ctx.db_name, ctx.packet_name, ctx.step[0])
                     msg += ctx.meta_data_json["hook"]["message"]
                     exc_type, exc_value, _ = sys.exc_info()
@@ -1186,14 +1202,14 @@ class DBCCore:
                             msg += '%s = %s\n' % (arg, getattr(self.args, arg))
                         msg += "```"
 
-                    if ctx.meta_data_json["hook"]["channel"] not in self.matterhooks:
+                    if ctx.meta_data_json["hook"]["channel"] not in self.mattermost_hooks:
                         self.logger.log(
                             'raise_error_logic: Channel "%s" not found!' % (ctx.meta_data_json["hook"]["channel"]),
                             "Error",
                             do_print=True
                         )
                     else:
-                        self.matterhooks[ctx.meta_data_json["hook"]["channel"]].send(
+                        self.mattermost_hooks[ctx.meta_data_json["hook"]["channel"]].send(
                             msg,
                             channel=ctx.meta_data_json["hook"]["channel"],
                             username=ctx.meta_data_json["hook"]["username"]

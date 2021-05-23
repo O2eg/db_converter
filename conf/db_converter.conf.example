@@ -20,9 +20,13 @@ log_sql = 1
 file_maxmbytes = 50
 file_backupcount = 5
 
-[matterhook]
+[mattermost_hooks]
 url = https://mattermost.company.net:1443
 chat_keys = dbc-alert/xaqx3323eyjs8e,dbc-dba/xaqx3323eyjs8e,dbc-maint/xaqx3323eyjs8e,dbc-migr/xaqx3323eyjs8e,dbc-test/xaqx3323eyjs8e
+
+[slack_hooks]
+url = https://hooks.slack.com/services
+chat_keys = dbc-alert=TKSQWF2MV/B079WCQ2S4C/lHCIP45K14KGd3estWrBwLfn
 
 [postgresql]
 deadlock_timeout = 1ms

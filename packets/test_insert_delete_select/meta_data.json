@@ -3,7 +3,7 @@
 	"client_min_messages": "INFO",
 	"type": "maintenance",
 	"hook": {
-		"type": "matterhook",
+		"type": "mattermost",
 		"username": "db_converter",
 		"verbosity": ["stm_result"],
 		"channel": "dbc-test",

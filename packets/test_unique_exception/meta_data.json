@@ -3,7 +3,7 @@
 	"description": "test exception packet",
 	"type": "default",
 	"hook": {
-		"type": "matterhook",
+		"type": "mattermost",
 		"username": "db_converter",
 		"channel": "dbc-test",
 		"message": "Message from test packet :construction:"
