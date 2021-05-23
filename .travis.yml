@@ -9,6 +9,7 @@ jobs:
         - pip install requests
         - pip install pyzipper
         - pip install coverage
+        - pip install slack-sdk
         - pip install coveralls
       before_script:
         - export PATH="/usr/lib/postgresql/10/bin:$PATH"
@@ -36,6 +37,7 @@ jobs:
         - pip install requests
         - pip install pyzipper
         - pip install coverage
+        - pip install slack-sdk
         - pip install coveralls
       before_script:
         - export PATH="/usr/lib/postgresql/12/bin:$PATH"
@@ -61,6 +63,7 @@ jobs:
         - pip install requests
         - pip install pyzipper
         - pip install coverage
+        - pip install slack-sdk
         - pip install coveralls
       before_script:
         - export PATH="/usr/lib/postgresql/13/bin:$PATH"
