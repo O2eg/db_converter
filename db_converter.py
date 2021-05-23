@@ -321,8 +321,8 @@ class DBCParams:
 
             if self.sys_conf.mattermost_hooks_conf is not None:
                 self.matter_hooks = {}
-                for chat, key in self.sys_conf.matter_hooks_conf["chat_keys"].items():
-                    self.matter_hooks[chat] = MatterWebhook(self.sys_conf.matter_hooks_conf["url"], key)
+                for chat, key in self.sys_conf.mattermost_hooks_conf["chat_keys"].items():
+                    self.matter_hooks[chat] = MatterWebhook(self.sys_conf.mattermost_hooks_conf["url"], key)
             else:
                 self.matter_hooks = None
 
