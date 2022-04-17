@@ -1,17 +1,17 @@
 # About db_converter
 
 <p align="left">
-	<a href="https://travis-ci.com/masterlee998/db_converter">
-		<img alt="Build Status" src="https://travis-ci.com/masterlee998/db_converter.svg?branch=master">
+	<a href="https://travis-ci.com/O2eg/db_converter">
+		<img alt="Build Status" src="https://travis-ci.com/O2eg/db_converter.svg?branch=master">
 	</a>
-	<a href="https://coveralls.io/github/masterlee998/db_converter?branch=master">
-		<img alt="Coverage Status" src="https://coveralls.io/repos/github/masterlee998/db_converter/badge.svg?branch=master">
+	<a href="https://coveralls.io/github/O2eg/db_converter?branch=master">
+		<img alt="Coverage Status" src="https://coveralls.io/repos/github/O2eg/db_converter/badge.svg?branch=master">
 	</a>
-	<a href="https://github.com/masterlee998/db_converter/blob/master/LICENSE">
-		<img alt="GitHub license" src="https://img.shields.io/github/license/masterlee998/db_converter.svg">
+	<a href="https://github.com/O2eg/db_converter/blob/master/LICENSE">
+		<img alt="GitHub license" src="https://img.shields.io/github/license/O2eg/db_converter.svg">
 	</a>
-    <a href="https://github.com/masterlee998/db_converter/releases">
-        <img alt="GitHub release" src="https://img.shields.io/github/v/release/masterlee998/db_converter.svg">
+    <a href="https://github.com/O2eg/db_converter/releases">
+        <img alt="GitHub release" src="https://img.shields.io/github/v/release/O2eg/db_converter.svg">
     </a>
     <a href="https://gitter.im/db_converter/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge">
         <img alt="Gitter" src="https://badges.gitter.im/db_converter/community.svg">
@@ -52,11 +52,11 @@ The primary goal of `db_converter` is to simplify the database conversion (migra
 
 Tasks that can be solved using `db_converter`:
 
-* Transactional [modification of data](https://github.com/masterlee998/db_converter/wiki/Use-cases#update-all-records-in-a-huge-table) of any volume
-* Database [structure changing](https://github.com/masterlee998/db_converter/tree/master/packets/test_int4_to_int8) with locks control
-* System and application [notifications](https://github.com/masterlee998/db_converter/wiki/Use-cases#alerts-examples) via `mattermost` or `slack`
-* Database maintenance ([deleting](https://github.com/masterlee998/db_converter/wiki/Use-cases#delete-old-data-from-huge-table) old data, creating new [schemas](https://github.com/masterlee998/db_converter/blob/master/packets/dba_clone_schema/01_step.sql), etc.)
-* [Export](https://github.com/masterlee998/db_converter/tree/master/packets/test_export_data) data in `CSV` format into an encrypted archive
+* Transactional [modification of data](https://github.com/O2eg/db_converter/wiki/Use-cases#update-all-records-in-a-huge-table) of any volume
+* Database [structure changing](https://github.com/O2eg/db_converter/tree/master/packets/test_int4_to_int8) with locks control
+* System and application [notifications](https://github.com/O2eg/db_converter/wiki/Use-cases#alerts-examples) via `mattermost` or `slack`
+* Database maintenance ([deleting](https://github.com/O2eg/db_converter/wiki/Use-cases#delete-old-data-from-huge-table) old data, creating new [schemas](https://github.com/O2eg/db_converter/blob/master/packets/dba_clone_schema/01_step.sql), etc.)
+* [Export](https://github.com/O2eg/db_converter/tree/master/packets/test_export_data) data in `CSV` format into an encrypted archive
 
 The key features are:
 
@@ -86,19 +86,19 @@ Built-in module [py-postgresql](https://github.com/python-postgres/fe).
 Download and run container:
 
 ```bash
-docker pull masterlee998/db_converter:dbc_pg13
-docker run --name dbc -d masterlee998/db_converter:dbc_pg13
+docker pull O2eg/db_converter:dbc_pg13
+docker run --name dbc -d O2eg/db_converter:dbc_pg13
 docker exec -it dbc bash
 ```
 
 # How to install and run
 
-First, needs to install python and modules (see the section [above](https://github.com/masterlee998/db_converter#dependencies-and-installation)).
+First, needs to install python and modules (see the section [above](https://github.com/O2eg/db_converter#dependencies-and-installation)).
 
 Next, clone `db_converter` from GitHub:
 
 ```bash
-git clone https://github.com/masterlee998/db_converter.git
+git clone https://github.com/O2eg/db_converter.git
 cd db_converter
 python3 db_converter.py --version
 >> Version 1.3
@@ -113,7 +113,7 @@ test_conn='pq:\/\/some_user:password@127.0.0.1:5400\/test_db_1'
 sudo sed -ie "s/^test_db_1.*/dbc = $test_conn/" conf/db_converter.conf
 ```
 
-Run `dba_get_conf` packet (just displays [basic DB configuration](https://github.com/masterlee998/db_converter/blob/master/packets/dba_get_conf/01_step.sql) options):
+Run `dba_get_conf` packet (just displays [basic DB configuration](https://github.com/O2eg/db_converter/blob/master/packets/dba_get_conf/01_step.sql) options):
 
 ```bash
 # run read-only packet
@@ -218,14 +218,14 @@ In all deployment modes, two parameters are mandatory:
 # Documentation
 
 <!--ts-->
-   * [Files layout and configuration](https://github.com/masterlee998/db_converter/wiki/Files-layout-and-configuration)
-   * [Command-line parameters](https://github.com/masterlee998/db_converter/wiki/Command-line-parameters)
-   * [Action tracker](https://github.com/masterlee998/db_converter/wiki/Action-tracker)
-   * [meta_data.json description](https://github.com/masterlee998/db_converter/wiki/meta_data.json-description)
-   * [Transactional processing of objects and data](https://github.com/masterlee998/db_converter/wiki/Transactional-processing-of-objects-and-data)
-   * [Threads](https://github.com/masterlee998/db_converter/wiki/Threads)
-   * [Internals](https://github.com/masterlee998/db_converter/wiki/Internals)
-   * [Use cases](https://github.com/masterlee998/db_converter/wiki/Use-cases)
+   * [Files layout and configuration](https://github.com/O2eg/db_converter/wiki/Files-layout-and-configuration)
+   * [Command-line parameters](https://github.com/O2eg/db_converter/wiki/Command-line-parameters)
+   * [Action tracker](https://github.com/O2eg/db_converter/wiki/Action-tracker)
+   * [meta_data.json description](https://github.com/O2eg/db_converter/wiki/meta_data.json-description)
+   * [Transactional processing of objects and data](https://github.com/O2eg/db_converter/wiki/Transactional-processing-of-objects-and-data)
+   * [Threads](https://github.com/O2eg/db_converter/wiki/Threads)
+   * [Internals](https://github.com/O2eg/db_converter/wiki/Internals)
+   * [Use cases](https://github.com/O2eg/db_converter/wiki/Use-cases)
 <!--te-->
 
 # Roadmap
@@ -242,6 +242,6 @@ In all deployment modes, two parameters are mandatory:
 
 # Support and contributions
 
-Bug reports and new features are appreciated and may be filed through the [issue tracker](https://github.com/masterlee998/db_converter/issues).
+Bug reports and new features are appreciated and may be filed through the [issue tracker](https://github.com/O2eg/db_converter/issues).
 
 Feel free to get technical support in [Gitter](https://gitter.im/db_converter/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge).
