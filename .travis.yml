@@ -75,3 +75,29 @@ jobs:
         - coverage run --source=dbccore,psc/psccommon,psc/psclogger,actiontracker,matterhook,db_converter tests/test_packets.py -v
       after_success:
         - coveralls
+    - os: linux
+      dist: focal
+      python: "3.10"
+      install:
+        - pip install -r requirements.txt
+        - pip install coverage
+        - pip install coveralls
+      before_script:
+        - export PATH="/usr/lib/postgresql/14/bin:$PATH"
+        - sudo apt -y install vim bash-completion wget
+        - sudo wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        - sudo echo "deb http://apt.postgresql.org/pub/repos/apt/ `lsb_release -cs`-pgdg main" |sudo tee /etc/apt/sources.list.d/pgdg.list
+        - sudo apt-get update
+        - sudo apt-get --yes remove postgresql\*
+        - sudo apt-get install -y postgresql-14 postgresql-client-14
+        - sudo sed -ie 's/^port.*/port = 5432/' /etc/postgresql/14/main/postgresql.conf
+        - sudo sed -i  '/listen_addresses/s/^#//g' /etc/postgresql/14/main/postgresql.conf
+        - sudo sed -ie "s/^listen_addresses.*/listen_addresses = '127.0.0.1'/" /etc/postgresql/14/main/postgresql.conf
+        - sudo sed -i -e '/local.*peer/s/postgres/all/' -e 's/peer\|md5/trust/g' /etc/postgresql/14/main/pg_hba.conf
+        - sudo pg_ctlcluster 14 main restart
+        - psql -c "ALTER USER postgres WITH PASSWORD 'postgres87291';" -U postgres -h 127.0.0.1
+        - psql -c "select version();" -U postgres -h 127.0.0.1
+      script:
+        - coverage run --source=dbccore,psc/psccommon,psc/psclogger,actiontracker,matterhook,db_converter tests/test_packets.py -v
+      after_success:
+        - coveralls
